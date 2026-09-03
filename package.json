@@ -1,0 +1,36 @@
+{
+  "name": "todo-effect",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -b",
+    "lint": "oxlint",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test"
+  },
+  "dependencies": {
+    "effect": "4.0.0-rc.112",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@effect/language-service": "^0.87.2",
+    "@effect/vitest": "4.0.0-rc.112",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.1.0",
+    "oxfmt": "0.66.0",
+    "oxlint": "1.81.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.2",
+    "vitest": "4.1.11"
+  }
+}
