@@ -13,9 +13,9 @@ Each entry maps a curriculum phase to the application increment that makes it ne
 | # | Phase | Application increment | Key concepts | Status |
 |---|---|---|---|---|
 | 0 | Prerequisites | Empty app runs; `dev`, `test`, `typecheck` work; versions pinned to `rc` | TS strict, generators, `pipe`, toolchain | done (mentor scaffolded at student's request) |
-| 1 | The Effect value | Pure todo operations as effects, run from a script and tests | `Effect<A, E, R>`, `Effect.gen`, `Effect.fn`, `Option`, `Result`, running effects | in_progress |
-| 2 | Typed errors | `TodoNotFound`, `EmptyTitle`, `TitleTooLong`; selective handling | `Schema.TaggedError`, `catchTag`, `catch`, `Cause`, `Exit` | not_started |
-| 3 | Schema | `Todo`, `TodoId`, `NewTodoInput` schemas; form input decoded | `Schema.Struct`/`Class`, brands, checks, decode/encode, Type vs Encoded | not_started |
+| 1 | The Effect value | Pure todo operations as effects, run from a script and tests | `Effect<A, E, R>`, `Effect.gen`, `Effect.fn`, `Option`, `Result`, running effects | done (Option/Result deferred to when needed) |
+| 2 | Typed errors | `TodoNotFound`, `EmptyTitle`, `TitleTooLong`; selective handling | `Schema.TaggedError`, `catchTag`, `catch`, `Cause`, `Exit` | done (retry/timeout deferred) |
+| 3 | Schema | `Todo`, `TodoId`, `NewTodoInput` schemas; form input decoded | `Schema.Struct`/`Class`, brands, checks, decode/encode, Type vs Encoded | in_progress |
 | 4 | Services and layers | `TodoRepository` interface + `layerMemory`; `TodoService` with domain rules; wiring at the entry point | `Context.Service`, `Layer.effect`/`succeed`, `Layer.provide`, `R` channel, memoization | not_started |
 | 5 | Testing | Tests for `TodoService` with a test layer and controlled time | `@effect/vitest`, `it.effect`, `it.layer`, `TestClock` | not_started |
 | 6 | React integration | List, add, toggle, remove, filter in React via atoms | `Atom.runtime`, `runtime.atom`/`fn`, `AsyncResult`, hooks, `Atom.family`, interruption on unmount | not_started |

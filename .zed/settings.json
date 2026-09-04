@@ -1,0 +1,37 @@
+{
+  "languages": {
+    "TypeScript": {
+      "formatter": {
+        "external": {
+          "command": "node_modules/.bin/oxfmt",
+          "arguments": ["--stdin-filepath", "{buffer_path}"]
+        }
+      }
+    },
+    "TSX": {
+      "formatter": {
+        "external": {
+          "command": "node_modules/.bin/oxfmt",
+          "arguments": ["--stdin-filepath", "{buffer_path}"]
+        }
+      }
+    },
+    "JavaScript": {
+      "formatter": {
+        "external": {
+          "command": "node_modules/.bin/oxfmt",
+          "arguments": ["--stdin-filepath", "{buffer_path}"]
+        }
+      },
+      "code_actions_on_format": {}
+    },
+    "JSON": {
+      "formatter": {
+        "external": {
+          "command": "node_modules/.bin/oxfmt",
+          "arguments": ["--stdin-filepath", "{buffer_path}"]
+        }
+      }
+    }
+  }
+}
