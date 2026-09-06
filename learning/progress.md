@@ -4,7 +4,7 @@
 See `learning/session.md`.
 
 ## Current Phase
-Phase 3 — Schema (Phase 2 core done: TaggedError, catchTag, fail vs die, Exit/Cause; retry/timeout deferred until a flaky layer exists)
+Phase 4 done (services, layers, `R`, `Layer.effect`+`Ref`, memoization, use cases, failing-layer swap). Next: Phase 6 React wiring (Phase 5 testing patterns largely covered along the way: `layer()`, `it.layer`, `TestClock`, `layerTest`).
 
 ## Mastery Scale
 
@@ -33,6 +33,15 @@ Phase 3 — Schema (Phase 2 core done: TaggedError, catchTag, fail vs die, Exit/
 | `Schema.brand` | 3/5 | applied unaided in domain, saw the three test sites fail to compile (2026-09-04) |
 | `Schema.decodeEffect` + `Effect.mapError` | 3/5 | `validateTitle` correct on third attempt after learning that `mapError`'s callback returns a value (2026-09-04); asked a good question about `decodeUnknown*` vs `decode*` |
 | Schema `Type` vs `Encoded` (`DateFromString`, encode/decode) | 2/5 | picked `Schema.Date` first (v3 habit), fixed after the v4 explanation; explained `JSON.stringify` via `toString` instead of `toJSON`; asked the right question about where encode belongs (2026-09-05) |
+| `Context.Service` + `Layer.succeed` + `Effect.provide` (`R` channel) | 3/5 | `IdGenerator` with static `layer` written with guidance, `Effect.provide` in tests found unaided (2026-09-05); dependency direction (domain vs services) needed two reminders |
+| `Context.Reference` / `Clock` / `TestClock` | 2/5 | asked how to see the default implementation; confused the `Clock` key with the value it yields (2026-09-05) |
+| `Layer.effect` + `Ref` | 3/5 | `layerTest` with a `Ref` counter written correctly on first attempt from the task's theory (2026-09-05) |
+| Repository as a service (`TodoRepository.layerMemory`) | 3/5 | `all`/`save` over a `Ref` correct on second attempt (2026-09-05); first attempt piped a plain array into `Effect.tap` |
+| Use case over repository (`R` composition) | 3/5 | `createTodo` on third attempt; toggle/rename/remove written independently and correctly (2026-09-06), span name copy-paste bug |
+| Error propagation via `yield*` (short-circuit) | 2/5 | described it as "handled inside" - the mechanism is not yet internalized (2026-09-06) |
+| Generic effect helpers (higher-order `Effect.fn`, `<E, R>` passthrough) | 2/5 | saw the solution in SOLUTION MODE (2026-09-06); did not find the shape alone; answered the tracing question correctly |
+| `Exit`/`Cause` inspection (`Effect.exit`, `Cause.hasDies`/`hasFails`) | 2/5 | used `Exit.isFailure` for a defect check; needed the fail-vs-die distinction pointed out again (2026-09-06) |
+| `@effect/vitest` `layer()` / `it.layer` | 2/5 | passed an effect where a suite callback is expected (2026-09-06) |
 | `Schema.TaggedError` | 3/5 | `TodoNotFound` with `id`, yielded directly; `toBeInstanceOf` assertion, 2026-09-04 |
 
 ## Strengths
@@ -41,16 +50,36 @@ Phase 3 — Schema (Phase 2 core done: TaggedError, catchTag, fail vs die, Exit/
 - Immutable updates (`map` with spread) come naturally
 
 ## Weak Areas
+- Reaches for a service/layer where a plain function suffices; declares interfaces with `E = never` that hide domain errors
+- Thinks of error propagation as "handling": needs the short-circuit model (`yield*` on a failure stops the generator)
+- Module dependency direction: put a domain type (`TodoId`) into a service file; domain must not depend on infrastructure
 - Asked for SOLUTION MODE twice in a row (tests, refactor) - next tasks must be done unaided to confirm 3/5 levels
 - Side effect (`crypto.randomUUID()`) moved from `Effect.sync` into an `Effect.map` callback — convention issue to discuss
 - Skips design questions when not tied to a task (ReadonlyArray asymmetry asked 3 times)
+- Leaves unused imports after experiments (`Layer` twice in the test file); typecheck fails on TS6133
 - Reads the top-most editor diagnostic instead of the first `tsc` error (language-service `missingEffectContext` vs `Cannot find name`)
 
 ## Recurring Mistakes
 - See `learning/mistakes.md`
 
 ## Last Completed Milestone
-2026-09-05 — Phase 3 step 3: `createdAt: Schema.DateFromString`, `new Date()` in `Effect.sync`, round-trip test; 13 tests green
+2026-09-06 — Phase 4 exit check: broken-storage layer swapped in one test, callers unchanged; 23 tests green
+
+Previous: 2026-09-06 — Phase 4 step 7 (SOLUTION MODE): `updateTodos` generic helper, use cases as one-liners; 22 tests green
+
+Previous: 2026-09-06 — Phase 4 step 6: toggle/rename/remove use cases done independently; 22 tests green
+
+Previous: 2026-09-06 — Phase 4 step 5: `createTodo` use case, `Layer.merge` in tests; 20 tests green
+
+Previous: 2026-09-05 — Phase 4 step 4: `TodoRepository` + `layerMemory`; 17 tests green
+
+Previous: 2026-09-05 — Phase 4 step 3: `IdGenerator.layerTest` (`Layer.effect` + `Ref`), nested `it.layer` block with whole-object assertions; 15 tests green
+
+Previous: 2026-09-05 — Phase 4 step 2: `createdAt` via `DateTime.nowAsDate`, `TestClock` test; 14 tests green
+
+Previous: 2026-09-05 — Phase 4 step 1: `IdGenerator` service, `addTodo` requires it via `R`, tests share the layer through `layer()`; 13 tests green; commit 9ed6736 covers Phases 2-3
+
+Previous: 2026-09-05 — Phase 3 step 3: `createdAt: Schema.DateFromString`, `new Date()` in `Effect.sync`, round-trip test; 13 tests green
 
 Previous: 2026-09-04 — Phase 3 step 2: title validation via `Schema.Trim.check(...)` + `decodeEffect` + `mapError`, `E = EmptyTitle | TitleTooLong` honest again; 11 tests green
 

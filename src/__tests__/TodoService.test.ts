@@ -1,0 +1,89 @@
+import { expect, layer } from "@effect/vitest"
+import { Cause, Effect, Exit, Layer } from "effect"
+import { EmptyTitle, TodoId, TodoNotFound } from "../domain/todo"
+import { IdGenerator } from "../services/IdGenerator"
+import { TodoRepository } from "../services/TodoRepository"
+import { createTodo, removeTodo, renameTodo, toggleTodo } from "../services/TodoService"
+
+const testLayer = Layer.merge(TodoRepository.layerMemory, IdGenerator.layerTest)
+
+layer(testLayer)("createTodo", (it) => {
+  it.effect("создаёт todo и сохраняет список в репозиторий", () =>
+    Effect.gen(function* () {
+      const repository = yield* TodoRepository
+
+      const created = yield* createTodo("Купить воду")
+
+      expect(created).toEqual([
+        { id: "todo-0", title: "Купить воду", completed: false, createdAt: new Date(0) },
+      ])
+      expect(yield* repository.all).toEqual(created)
+    }),
+  )
+
+  it.effect("при EmptyTitle ничего не сохраняет: save не вызывается", () =>
+    Effect.gen(function* () {
+      const repository = yield* TodoRepository
+      const before = yield* repository.all
+
+      const error = yield* Effect.flip(createTodo("   "))
+
+      expect(error).toBeInstanceOf(EmptyTitle)
+      expect(yield* repository.all).toEqual(before)
+    }),
+  )
+
+  it.effect("toggle, rename, remove работают поверх сохранённого списка", () =>
+    Effect.gen(function* () {
+      const repository = yield* TodoRepository
+      const created = yield* createTodo("first")
+      const first = created[created.length - 1]
+      yield* createTodo("second")
+
+      const toggled = yield* toggleTodo(first.id)
+      expect(toggled.find((todo) => todo.id === first.id)?.completed).toBe(true)
+
+      const renamed = yield* renameTodo(first.id, "  renamed  ")
+      expect(renamed.find((todo) => todo.id === first.id)?.title).toBe("renamed")
+
+      const removed = yield* removeTodo(first.id)
+      expect(removed.map((todo) => todo.title)).not.toContain("renamed")
+      expect(removed.map((todo) => todo.title)).toContain("second")
+      expect(yield* repository.all).toEqual(removed)
+    }),
+  )
+
+  it.effect("TodoNotFound из домена проходит наружу и ничего не сохраняет", () =>
+    Effect.gen(function* () {
+      const repository = yield* TodoRepository
+      const before = yield* repository.all
+
+      const error = yield* Effect.flip(toggleTodo(TodoId.make("nope")))
+
+      expect(error).toBeInstanceOf(TodoNotFound)
+      expect(yield* repository.all).toEqual(before)
+    }),
+  )
+
+  it.layer(
+    Layer.merge(
+      Layer.succeed(TodoRepository, {
+        all: Effect.die(new Error("storage is down")),
+        save: () => Effect.void,
+      }),
+      IdGenerator.layerTest,
+    ),
+  )("со сломанным хранилищем", (it) => {
+    it.effect("toggleTodo умирает дефектом, а не TodoNotFound", () =>
+      Effect.gen(function* () {
+        const exit = yield* Effect.exit(toggleTodo(TodoId.make("any")))
+
+        expect(Exit.isFailure(exit)).toBe(true)
+        if (Exit.isFailure(exit)) {
+          expect(Cause.hasDies(exit.cause)).toBe(true)
+          expect(Cause.hasFails(exit.cause)).toBe(false)
+        }
+      }),
+    )
+  })
+})

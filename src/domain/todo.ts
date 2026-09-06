@@ -1,6 +1,8 @@
-import { Effect, Schema } from "effect"
+import { DateTime, Effect, Schema } from "effect"
+import { IdGenerator } from "../services/IdGenerator"
+import { TodoId } from "./TodoId"
 
-export const TodoId = Schema.String.pipe(Schema.brand("TodoId"))
+export { TodoId }
 
 export const Title = Schema.Trim.check(Schema.isNonEmpty(), Schema.isMaxLength(100))
 
@@ -12,7 +14,6 @@ export const Todo = Schema.Struct({
 })
 
 export type Todo = typeof Todo.Type
-export type TodoId = typeof TodoId.Type
 
 export class TodoNotFound extends Schema.TaggedError<TodoNotFound>()("TodoNotFound", {
   id: TodoId,
@@ -37,18 +38,21 @@ const replaceTodo = (
 
 const validateTitle = (title: string) =>
   Schema.decodeEffect(Title)(title).pipe(
-    Effect.mapError(() => {
-      return title.trim().length === 0 ? new EmptyTitle() : new TitleTooLong({ max: 100 })
-    }),
+    Effect.mapError(() =>
+      title.trim().length === 0 ? new EmptyTitle() : new TitleTooLong({ max: 100 }),
+    ),
   )
 
 export const addTodo = Effect.fn("addTodo")(function* (todos: ReadonlyArray<Todo>, title: string) {
-  const id = yield* Effect.sync(() => TodoId.make(crypto.randomUUID()))
-  const createdAt = yield* Effect.sync(() => new Date())
+  const idGenerator = yield* IdGenerator
+  const id = yield* idGenerator.next
+  const createdAt = yield* DateTime.nowAsDate
+  const validTitle = yield* validateTitle(title)
 
-  const decodedTitle = yield* validateTitle(title)
-
-  const added = [...todos, { id, completed: false, title: decodedTitle, createdAt: createdAt }]
+  const added: ReadonlyArray<Todo> = [
+    ...todos,
+    { id, completed: false, title: validTitle, createdAt },
+  ]
   return added
 })
 
@@ -67,9 +71,9 @@ export const renameTodo = Effect.fn("renameTodo")(function* (
 ) {
   yield* findTodo(todos, id)
 
-  const decodedTitle = yield* validateTitle(title)
+  const validTitle = yield* validateTitle(title)
 
-  return replaceTodo(todos, id, (todo) => ({ ...todo, title: decodedTitle }))
+  return replaceTodo(todos, id, (todo) => ({ ...todo, title: validTitle }))
 })
 
 export const removeTodo = Effect.fn("removeTodo")(function* (
@@ -78,5 +82,5 @@ export const removeTodo = Effect.fn("removeTodo")(function* (
 ) {
   yield* findTodo(todos, id)
 
-  return todos.filter((t) => t.id !== id)
+  return todos.filter((todo) => todo.id !== id)
 })
