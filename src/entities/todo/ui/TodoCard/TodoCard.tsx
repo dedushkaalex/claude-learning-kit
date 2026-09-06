@@ -12,13 +12,19 @@ export function TodoCard({ todo, onToggle, onRemove }: TodoCardProps) {
 
   return (
     <li className={className}>
-      <input
-        type="checkbox"
-        checked={todo.completed}
-        onChange={() => onToggle?.(todo.id)}
-        aria-label={`Toggle ${todo.title}`}
-      />
-      <span className={styles.title}>{todo.title}</span>
+      <label className={styles.check}>
+        <input
+          type="checkbox"
+          className={styles.checkbox}
+          checked={todo.completed}
+          onChange={() => onToggle?.(todo.id)}
+          aria-label={`Toggle ${todo.title}`}
+        />
+        <span className={styles.mark} aria-hidden="true" />
+      </label>
+      <span className={styles.title}>
+        <span className={styles.text}>{todo.title}</span>
+      </span>
       <button
         type="button"
         className={styles.remove}

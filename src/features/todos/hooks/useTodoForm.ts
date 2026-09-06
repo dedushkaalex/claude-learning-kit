@@ -1,6 +1,6 @@
 import { useAtom } from "@effect/atom-react"
 import type { FormEvent } from "react"
-import { createTodoAtom } from "../../entities/todo/todoStore"
+import { createTodoAtom } from "../../../entities/todo/todoStore"
 
 export function useTodoForm() {
   const [result, create] = useAtom(createTodoAtom)

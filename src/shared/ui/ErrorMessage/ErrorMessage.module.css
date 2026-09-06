@@ -1,4 +1,9 @@
 .error {
-  border-color: #d64545;
-  color: #d64545;
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--danger);
+  border-radius: 8px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  text-align: left;
 }

@@ -1,0 +1,49 @@
+.form {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0;
+  border: 0;
+  border-bottom: 2px solid var(--line-strong);
+  border-radius: 0;
+  background: transparent;
+  font-size: 1.35rem;
+  font-weight: 500;
+  transition: border-color 0.15s;
+}
+
+.input::placeholder {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.input:focus {
+  outline: none;
+  border-bottom-color: var(--accent);
+}
+
+.submit {
+  padding: 0.45rem 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.submit:hover {
+  filter: brightness(1.08);
+}
+
+.submit:disabled,
+.input:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

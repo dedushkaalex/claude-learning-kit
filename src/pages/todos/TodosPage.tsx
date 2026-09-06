@@ -1,13 +1,19 @@
-import { TodoForm } from "../../features/todos/TodoForm"
-import { TodoList } from "../../features/todos/TodoList"
+import { TodoCount } from "../../features/todos/ui/TodoCount/TodoCount"
+import { TodoFilter } from "../../features/todos/ui/TodoFilter/TodoFilter"
+import { TodoForm } from "../../features/todos/ui/TodoForm/TodoForm"
+import { TodoList } from "../../features/todos/ui/TodoList/TodoList"
 import styles from "./TodosPage.module.css"
 
 export function TodosPage() {
   return (
-    <div className={styles.page}>
-      <h1>Todo list</h1>
+    <main className={styles.page}>
+      <h1 className={styles.title}>Todos</h1>
       <TodoForm />
       <TodoList />
-    </div>
+      <footer className={styles.footer}>
+        <TodoCount />
+        <TodoFilter />
+      </footer>
+    </main>
   )
 }

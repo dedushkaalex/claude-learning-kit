@@ -1,6 +1,6 @@
 import { AsyncResult } from "effect/unstable/reactivity"
-import { ErrorMessage } from "../../shared/ui/ErrorMessage/ErrorMessage"
-import { useTodoForm } from "./useTodoForm"
+import { ErrorMessage } from "../../../../shared/ui/ErrorMessage/ErrorMessage"
+import { useTodoForm } from "../../hooks/useTodoForm"
 import styles from "./TodoForm.module.css"
 
 export function TodoForm() {
@@ -12,7 +12,7 @@ export function TodoForm() {
         <input
           name="title"
           className={styles.input}
-          placeholder="What needs to be done?"
+          placeholder="What needs doing?"
           autoComplete="off"
         />
         <button type="submit" className={styles.submit} disabled={result.waiting}>

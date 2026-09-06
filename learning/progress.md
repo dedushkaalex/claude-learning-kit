@@ -45,6 +45,7 @@ Phase 6 started 2026-09-06 (React + `@effect/atom-react`). Phase 4 done; Phase 5
 | `Atom.runtime` + `runtime.atom` + `useAtomValue` + `AsyncResult.builder` | 3/5 | step 1 wired unaided from the task's theory (2026-09-06); explained why the runtime lives at module level (new instance per render), consequence for the `Ref` supplied by mentor |
 | `runtime.fn` + `useAtom`/`useAtomSet` + reactivity keys | 4/5 | create wired from the hint, toggle/remove wired independently with the shared key (2026-09-06); hypothesised "effect runs once, needs a re-run per event" before knowing the registry; picked `useState` for `disabled` first, accepted `result.waiting` |
 | `AsyncResult` states: `Initial` vs `waiting` flag | 3/5 | observed no flicker with the sync memory layer, understood why `onInitial` is right for the list (2026-09-06) |
+| Derived atoms: `Atom.make((get) => ...)`, `Atom.make(initial)` + `useAtom`, `AsyncResult.map` | 4/5 | filter written after the theory, first draft used `Effect.gen` + `get.result`; "N items left" counter written independently on first attempt (2026-09-06); correctly traced what re-runs on a toggle (including `TodoFilter` because the counter lives there) and that `E = never` makes the non-defect `onFailure` branch unreachable |
 | `AsyncResult.builder` error branches (`onErrorTag`, `orNull` vs `render`) | 3/5 | both tags handled on the second attempt; picked `render()` first despite the throw-on-unhandled explanation (2026-09-06) |
 | `Schema.TaggedError` | 3/5 | `TodoNotFound` with `id`, yielded directly; `toBeInstanceOf` assertion, 2026-09-04 |
 
@@ -67,7 +68,11 @@ Phase 6 started 2026-09-06 (React + `@effect/atom-react`). Phase 4 done; Phase 5
 - See `learning/mistakes.md`
 
 ## Last Completed Milestone
-2026-09-06 — Phase 6 step 4: typed domain errors rendered under the form by tag; `pnpm check` green, 23 tests
+2026-09-06 — Phase 6 step 6: "N items left" derived counter written independently; `pnpm check` green, 23 tests
+
+Previous: 2026-09-06 — Phase 6 step 5: `all | active | completed` filter via a plain atom + a derived atom over `todosAtom`; `pnpm check` green, 23 tests
+
+Previous: 2026-09-06 — Phase 6 step 4: typed domain errors rendered under the form by tag; `pnpm check` green, 23 tests
 
 Previous: 2026-09-06 — Phase 6 step 3: toggle/remove through `runtime.fn` sharing the reactivity key, list untouched; `pnpm check` green, 23 tests
 

@@ -40,6 +40,10 @@ Connect the concept to the current application.
 ### Minimum theory
 Explain only prerequisites needed for this step.
 
+Every API the Task names (function, hook, type, method) that the student has not used before gets its own explanation here: what it takes, what it returns, what it does on each variant of its input, and a 3-5 line example. Check `learning/concepts.md` and the student's code to decide what counts as new.
+
+Completion criterion: the Task contains no identifier that Minimum theory did not introduce or that the student has not already used.
+
 ### Task
 Give exactly ONE concrete implementation task.
 

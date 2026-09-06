@@ -129,3 +129,15 @@ Add concepts below this line.
 - Can implement: not yet alone (SOLUTION MODE 2026-09-06)
 - Common confusion: "wrap in a service so the repository is initialised once" - `yield* Service` is a context lookup, not construction
 - Follow-up challenge: write a similar generic helper for the repository (`withTodos`) that only reads, and predict its `E`/`R` before compiling.
+
+### Derived atoms (`Atom.make((get) => ...)`) and plain atoms (`Atom.make(initial)`)
+- Status: in_progress
+- Mastery: 4/5
+- Mental model: a plain atom is a global variable with subscribers; a derived atom is a function whose dependencies are whatever it reads through `get`, re-run whenever one of them changes. No reactivity key: keys invalidate source atoms, `get` propagates the change downstream.
+- Why this project needs it: the filter is UI state, not domain state; the visible list is computed from server data + filter without touching the repository.
+- Can explain: dependency propagation, yes (2026-09-06); why no runtime: "runtime supplies the layer's services, a pure computation needs none" after a hint.
+- Can implement: yes, independently — the count atom on first attempt (2026-09-06); first filter draft wrapped a pure computation in `Effect.gen` + `get.result`.
+- Can debug: not yet verified
+- Alternatives/trade-offs: `get.result(todosAtom)` inside an Effect (works, adds an Effect layer to a pure map); filtering inside the component with `useMemo` (duplicates per consumer).
+- Common confusion: `AsyncResult.map` vs `get.result`; thinking `runtime.atom` is about `AsyncResult` rather than about services.
+- Follow-up challenge: done (count atom). Next: decide component placement so a counter does not re-render unrelated UI.
