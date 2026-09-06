@@ -4,7 +4,7 @@
 See `learning/session.md`.
 
 ## Current Phase
-Phase 4 done (services, layers, `R`, `Layer.effect`+`Ref`, memoization, use cases, failing-layer swap). Next: Phase 6 React wiring (Phase 5 testing patterns largely covered along the way: `layer()`, `it.layer`, `TestClock`, `layerTest`).
+Phase 6 started 2026-09-06 (React + `@effect/atom-react`). Phase 4 done; Phase 5 folded into Phase 4 (`layer()`, `it.layer`, `TestClock`, `layerTest`).
 
 ## Mastery Scale
 
@@ -42,6 +42,10 @@ Phase 4 done (services, layers, `R`, `Layer.effect`+`Ref`, memoization, use case
 | Generic effect helpers (higher-order `Effect.fn`, `<E, R>` passthrough) | 2/5 | saw the solution in SOLUTION MODE (2026-09-06); did not find the shape alone; answered the tracing question correctly |
 | `Exit`/`Cause` inspection (`Effect.exit`, `Cause.hasDies`/`hasFails`) | 2/5 | used `Exit.isFailure` for a defect check; needed the fail-vs-die distinction pointed out again (2026-09-06) |
 | `@effect/vitest` `layer()` / `it.layer` | 2/5 | passed an effect where a suite callback is expected (2026-09-06) |
+| `Atom.runtime` + `runtime.atom` + `useAtomValue` + `AsyncResult.builder` | 3/5 | step 1 wired unaided from the task's theory (2026-09-06); explained why the runtime lives at module level (new instance per render), consequence for the `Ref` supplied by mentor |
+| `runtime.fn` + `useAtom`/`useAtomSet` + reactivity keys | 4/5 | create wired from the hint, toggle/remove wired independently with the shared key (2026-09-06); hypothesised "effect runs once, needs a re-run per event" before knowing the registry; picked `useState` for `disabled` first, accepted `result.waiting` |
+| `AsyncResult` states: `Initial` vs `waiting` flag | 3/5 | observed no flicker with the sync memory layer, understood why `onInitial` is right for the list (2026-09-06) |
+| `AsyncResult.builder` error branches (`onErrorTag`, `orNull` vs `render`) | 3/5 | both tags handled on the second attempt; picked `render()` first despite the throw-on-unhandled explanation (2026-09-06) |
 | `Schema.TaggedError` | 3/5 | `TodoNotFound` with `id`, yielded directly; `toBeInstanceOf` assertion, 2026-09-04 |
 
 ## Strengths
@@ -56,14 +60,22 @@ Phase 4 done (services, layers, `R`, `Layer.effect`+`Ref`, memoization, use case
 - Asked for SOLUTION MODE twice in a row (tests, refactor) - next tasks must be done unaided to confirm 3/5 levels
 - Side effect (`crypto.randomUUID()`) moved from `Effect.sync` into an `Effect.map` callback — convention issue to discuss
 - Skips design questions when not tied to a task (ReadonlyArray asymmetry asked 3 times)
-- Leaves unused imports after experiments (`Layer` twice in the test file); typecheck fails on TS6133
+- Leaves unused imports after experiments (`Layer` twice, `Exit`, `TodoItem`); reports "done" without running `pnpm check` - agreed 2026-09-06 that "done" implies a green check
 - Reads the top-most editor diagnostic instead of the first `tsc` error (language-service `missingEffectContext` vs `Cannot find name`)
 
 ## Recurring Mistakes
 - See `learning/mistakes.md`
 
 ## Last Completed Milestone
-2026-09-06 — Phase 4 exit check: broken-storage layer swapped in one test, callers unchanged; 23 tests green
+2026-09-06 — Phase 6 step 4: typed domain errors rendered under the form by tag; `pnpm check` green, 23 tests
+
+Previous: 2026-09-06 — Phase 6 step 3: toggle/remove through `runtime.fn` sharing the reactivity key, list untouched; `pnpm check` green, 23 tests
+
+Previous: 2026-09-06 — Phase 6 step 2: create todo from the form via `runtime.fn`, list refreshes through reactivity keys; `pnpm check` green, 23 tests
+
+Previous: 2026-09-06 — Phase 6 step 1: todo list rendered from `TodoRepository` through `Atom.runtime`/`runtime.atom`, three `AsyncResult` states; `pnpm check` green, 23 tests
+
+Previous: 2026-09-06 — Phase 4 exit check: broken-storage layer swapped in one test, callers unchanged; 23 tests green
 
 Previous: 2026-09-06 — Phase 4 step 7 (SOLUTION MODE): `updateTodos` generic helper, use cases as one-liners; 22 tests green
 

@@ -29,7 +29,7 @@ See `learning/progress.md`. A concept counts as learned at 4/5: implemented with
 - [ ] Generator functions (`function*`, `yield*`) as plain JavaScript, before they appear inside `Effect.gen`
 - [ ] Immutable updates of arrays/objects (the todo list is never mutated in place)
 - [ ] `pipe` as function composition: `pipe(x, f, g)` is `g(f(x))`
-- [ ] Repository layout: `src/domain`, `src/services`, `src/ui`, `test`
+- [ ] Repository layout: feature-based — `src/shared`, `src/entities`, `src/features`, `src/pages`, `src/app`
 - [ ] Toolchain: pnpm, Vite, Vitest, `tsc --noEmit`, ESLint; the `rc` dist-tag on npm and why versions are pinned
 - [ ] Fill in the `Commands` section of `AGENTS.md`
 
@@ -220,7 +220,8 @@ See `learning/progress.md`. A concept counts as learned at 4/5: implemented with
 - Todos persist across reloads; the filter persists via `Atom.kvs`; corrupt JSON in `localStorage` results in an empty list and a logged warning.
 
 ### Exit criteria
-- The student can explain which layer changed and prove with `git diff` that `src/ui` did not.
+- The student can explain which layer changed and prove with `git diff` that `src/features` and
+  `src/pages` did not.
 - The student can explain when a finalizer runs and demonstrate it with the cross-tab subscription.
 
 ---

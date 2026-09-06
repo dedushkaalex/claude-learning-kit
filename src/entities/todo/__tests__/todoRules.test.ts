@@ -1,21 +1,12 @@
 import { expect, layer } from "@effect/vitest"
 import { Effect, pipe, Schema } from "effect"
-import {
-  addTodo,
-  EmptyTitle,
-  removeTodo,
-  renameTodo,
-  TitleTooLong,
-  Todo,
-  TodoId,
-  TodoNotFound,
-  toggleTodo,
-} from "../domain/todo"
-import { IdGenerator } from "../services/IdGenerator"
+import { addTodo, removeTodo, renameTodo, toggleTodo } from "../todoRules"
+import { EmptyTitle, TitleTooLong, Todo, TodoId, TodoNotFound } from "../types"
+import { TodoIdGenerator } from "../todoIdGenerator"
 import { TestClock } from "effect/testing"
 
-layer(IdGenerator.layer)("todo", (it) => {
-  it.layer(IdGenerator.layerTest)("с предсказуемыми id", (it) => {
+layer(TodoIdGenerator.layer)("todo", (it) => {
+  it.layer(TodoIdGenerator.layerTest)("с предсказуемыми id", (it) => {
     it.effect("Добавить 2 todo: сравниваем объекты целиком", () =>
       Effect.gen(function* () {
         const todos = yield* pipe(
@@ -34,7 +25,7 @@ layer(IdGenerator.layer)("todo", (it) => {
 
   it.effect("Effect.provide слоя, которого нет в блоке, строит его заново: todo-0", () =>
     Effect.gen(function* () {
-      const todos = yield* addTodo([], "first").pipe(Effect.provide(IdGenerator.layerTest))
+      const todos = yield* addTodo([], "first").pipe(Effect.provide(TodoIdGenerator.layerTest))
 
       expect(todos[0].id).toBe("todo-0")
     }),

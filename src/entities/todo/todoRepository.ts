@@ -1,5 +1,5 @@
 import { Context, Effect, Layer, Ref } from "effect"
-import type { Todo } from "../domain/todo"
+import type { Todo } from "./types"
 
 export class TodoRepository extends Context.Service<
   TodoRepository,

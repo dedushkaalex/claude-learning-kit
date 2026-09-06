@@ -1,14 +1,14 @@
 import { expect, layer } from "@effect/vitest"
 import { Effect, Layer } from "effect"
-import { addTodo } from "../domain/todo"
-import { IdGenerator } from "../services/IdGenerator"
-import { TodoRepository } from "../services/TodoRepository"
+import { addTodo } from "../todoRules"
+import { TodoIdGenerator } from "../todoIdGenerator"
+import { TodoRepository } from "../todoRepository"
 
 layer(TodoRepository.layerMemory)("TodoRepository.layerMemory", (it) => {
   it.effect("save заменяет список целиком, all возвращает сохранённое", () =>
     Effect.gen(function* () {
       const repository = yield* TodoRepository
-      const todos = yield* addTodo([], "first").pipe(Effect.provide(IdGenerator.layerTest))
+      const todos = yield* addTodo([], "first").pipe(Effect.provide(TodoIdGenerator.layerTest))
 
       yield* repository.save(todos)
       yield* repository.save(todos)

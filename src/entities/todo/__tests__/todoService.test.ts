@@ -1,11 +1,11 @@
 import { expect, layer } from "@effect/vitest"
 import { Cause, Effect, Exit, Layer } from "effect"
-import { EmptyTitle, TodoId, TodoNotFound } from "../domain/todo"
-import { IdGenerator } from "../services/IdGenerator"
-import { TodoRepository } from "../services/TodoRepository"
-import { createTodo, removeTodo, renameTodo, toggleTodo } from "../services/TodoService"
+import { EmptyTitle, TodoId, TodoNotFound } from "../types"
+import { TodoIdGenerator } from "../todoIdGenerator"
+import { TodoRepository } from "../todoRepository"
+import { createTodo, removeTodo, renameTodo, toggleTodo } from "../todoService"
 
-const testLayer = Layer.merge(TodoRepository.layerMemory, IdGenerator.layerTest)
+const testLayer = Layer.merge(TodoRepository.layerMemory, TodoIdGenerator.layerTest)
 
 layer(testLayer)("createTodo", (it) => {
   it.effect("создаёт todo и сохраняет список в репозиторий", () =>
@@ -71,7 +71,7 @@ layer(testLayer)("createTodo", (it) => {
         all: Effect.die(new Error("storage is down")),
         save: () => Effect.void,
       }),
-      IdGenerator.layerTest,
+      TodoIdGenerator.layerTest,
     ),
   )("со сломанным хранилищем", (it) => {
     it.effect("toggleTodo умирает дефектом, а не TodoNotFound", () =>

@@ -27,3 +27,6 @@ dist-ssr
 !*.md
 !.claude/
 .claude/settings.local.json
+
+# Отчёты code review, вне коммитов
+reviews/

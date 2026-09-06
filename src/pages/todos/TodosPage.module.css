@@ -1,0 +1,11 @@
+.page {
+  max-width: 520px;
+  margin: 3rem auto;
+  padding: 0 1rem;
+}
+
+.page h1 {
+  color: var(--text-h);
+  font-size: 1.6rem;
+  margin: 0 0 1rem;
+}

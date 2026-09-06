@@ -16,6 +16,7 @@
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test"
   },
   "dependencies": {
+    "@effect/atom-react": "4.0.0-rc.112",
     "effect": "4.0.0-rc.112",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"

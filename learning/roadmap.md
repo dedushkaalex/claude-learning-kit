@@ -1,10 +1,10 @@
 # Roadmap — Todo List on Effect v4 (RC) + React
 
 ## Current Phase
-Phase 0 — Prerequisites and Project Orientation
+Phase 6 — React integration (`@effect/atom-react`)
 
 ## Current Goal
-Scaffold the project (Vite + React + TypeScript strict, `effect@rc`, Vitest + `@effect/vitest@rc`) and fill in the `Commands` section of `AGENTS.md`.
+Render the todo list from `TodoRepository` through `Atom.runtime` + `runtime.atom`, then wire mutations via `runtime.fn`.
 
 ## Sequence
 
@@ -15,10 +15,10 @@ Each entry maps a curriculum phase to the application increment that makes it ne
 | 0 | Prerequisites | Empty app runs; `dev`, `test`, `typecheck` work; versions pinned to `rc` | TS strict, generators, `pipe`, toolchain | done (mentor scaffolded at student's request) |
 | 1 | The Effect value | Pure todo operations as effects, run from a script and tests | `Effect<A, E, R>`, `Effect.gen`, `Effect.fn`, `Option`, `Result`, running effects | done (Option/Result deferred to when needed) |
 | 2 | Typed errors | `TodoNotFound`, `EmptyTitle`, `TitleTooLong`; selective handling | `Schema.TaggedError`, `catchTag`, `catch`, `Cause`, `Exit` | done (retry/timeout deferred) |
-| 3 | Schema | `Todo`, `TodoId`, `NewTodoInput` schemas; form input decoded | `Schema.Struct`/`Class`, brands, checks, decode/encode, Type vs Encoded | in_progress |
-| 4 | Services and layers | `TodoRepository` interface + `layerMemory`; `TodoService` with domain rules; wiring at the entry point | `Context.Service`, `Layer.effect`/`succeed`, `Layer.provide`, `R` channel, memoization | not_started |
-| 5 | Testing | Tests for `TodoService` with a test layer and controlled time | `@effect/vitest`, `it.effect`, `it.layer`, `TestClock` | not_started |
-| 6 | React integration | List, add, toggle, remove, filter in React via atoms | `Atom.runtime`, `runtime.atom`/`fn`, `AsyncResult`, hooks, `Atom.family`, interruption on unmount | not_started |
+| 3 | Schema | `Todo`, `TodoId`, `NewTodoInput` schemas; form input decoded | `Schema.Struct`/`Class`, brands, checks, decode/encode, Type vs Encoded | done |
+| 4 | Services and layers | `TodoRepository` interface + `layerMemory`; `TodoService` with domain rules; wiring at the entry point | `Context.Service`, `Layer.effect`/`succeed`, `Layer.provide`, `R` channel, memoization | done |
+| 5 | Testing | Tests for `TodoService` with a test layer and controlled time | `@effect/vitest`, `it.effect`, `it.layer`, `TestClock` | done (folded into Phase 4) |
+| 6 | React integration | List, add, toggle, remove, filter in React via atoms | `Atom.runtime`, `runtime.atom`/`fn`, `AsyncResult`, hooks, `Atom.family`, interruption on unmount | in_progress |
 | 7 | Browser persistence | `layerLocalStorage`; filter saved via `Atom.kvs`; cross-tab sync | `KeyValueStore`, `BrowserKeyValueStore`, `Layer.scoped`, finalizers | not_started |
 | 8 | HTTP API | Node server with `HttpApi`; `layerHttp` client in the React app | `HttpApiGroup`/`Endpoint`/`Builder`, `HttpApiClient`, `FetchHttpClient`, `HttpApiTest`, `Config` | not_started |
 | 9 | Concurrency | Optimistic toggle with rollback; bounded "clear completed"; stale request cancellation | fibers, structured concurrency, `forEach` concurrency, interruption, `Effect.cached` | not_started |
@@ -31,11 +31,11 @@ The same application feature is revisited at increasing depth. This table tracks
 
 | Feature | Phase introduced | Concepts | Status |
 |---|---|---|---|
-| Create todo with validated title | 1, 3 | `Effect.fn`, `Schema` checks, `EmptyTitle` | not_started |
-| Toggle / rename / remove | 1, 2 | error channel, `TodoNotFound` | not_started |
-| Todo model with `createdAt` | 3, 5 | `Schema.Class`, `Clock`, `TestClock` | not_started |
-| Storage behind an interface | 4 | `Context.Service`, `Layer` | not_started |
-| React list with loading/error states | 6 | `AsyncResult`, `runtime.atom` | not_started |
+| Create todo with validated title | 1, 3 | `Effect.fn`, `Schema` checks, `EmptyTitle` | done (domain + use case) |
+| Toggle / rename / remove | 1, 2 | error channel, `TodoNotFound` | done (domain + use case) |
+| Todo model with `createdAt` | 3, 5 | `Schema.Class`, `Clock`, `TestClock` | done (`Schema.Struct` + `DateFromString`) |
+| Storage behind an interface | 4 | `Context.Service`, `Layer` | done (`layerMemory`) |
+| React list with loading/error states | 6 | `AsyncResult`, `runtime.atom` | in_progress |
 | Filter all/active/completed | 6, 7 | derived atoms, `Atom.kvs` | not_started |
 | Persist across reload | 7 | `KeyValueStore`, layer swap | not_started |
 | Cross-tab sync | 7 | `Layer.scoped`, finalizers | not_started |
@@ -49,15 +49,25 @@ The same application feature is revisited at increasing depth. This table tracks
 
 ```
 src/
-  domain/        Todo schemas, domain errors, pure rules          (Phases 2–3)
-  services/      TodoRepository, TodoService, layers              (Phase 4+)
-  runtime/       Atom.runtime and app layer composition           (Phase 6)
-  ui/            React components and atoms                       (Phase 6)
-src/__tests__/   @effect/vitest tests (student chose co-location)  (Phase 1+)
+  app/           main.tsx and index.css (the only global stylesheet)
+  pages/todos/   TodosPage.tsx + TodosPage.module.css — lays the feature out
+  features/todos/  one large UI module: TodoForm, useTodoForm, TodoList
+                   (a feature is a whole UI module, not one use case per folder)
+  entities/todo/   types.ts, todoRules.ts, todoRepository.ts, todoService.ts,
+                   todoStore.ts, todoIdGenerator.ts, ui/TodoCard/, __tests__/
+  shared/ui/     one folder per component: StatusMessage/, ErrorMessage/
 apps/server/     HttpApi definition, handlers, Node entry         (Phase 8)
+
+Conventions: every stylesheet is a CSS module (`<Component>.module.css`) next to its
+component; `src/app/index.css` is the only global one. In `ui/` folders the folder is named
+after the component. Component files are PascalCase, everything else camelCase.
 ```
 
-The layout is introduced only when a phase needs a folder. Phase 1 may live in a single file.
+Feature-based layout adopted 2026-09-06 (mentor performed the move; restructuring was not a
+learning target). Dependency direction is one-way: shared → entities → features → pages → app.
+A feature contract (`context.ts`) is added only when one feature needs another. A second feature
+folder appears only for a second UI module (for example a settings panel), not for a second
+button.
 
 ## Layer swap milestones
 
@@ -67,7 +77,8 @@ The central design lesson is that `TodoRepository` has three interchangeable imp
 2. `layerLocalStorage` — Phase 7
 3. `layerHttp` — Phase 8
 
-Each swap is verified with `git diff` showing that `src/ui` is untouched.
+Each swap is verified with `git diff` showing that `src/features` and `src/pages` are untouched
+(only `entities/todo/todoRepository.ts` and the layer in `entities/todo/todoStore.ts` change).
 
 ## Versioning rules
 

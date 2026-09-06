@@ -1,0 +1,6 @@
+.message {
+  padding: 1.2rem 0.9rem;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  text-align: center;
+}
