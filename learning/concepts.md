@@ -141,3 +141,15 @@ Add concepts below this line.
 - Alternatives/trade-offs: `get.result(todosAtom)` inside an Effect (works, adds an Effect layer to a pure map); filtering inside the component with `useMemo` (duplicates per consumer).
 - Common confusion: `AsyncResult.map` vs `get.result`; thinking `runtime.atom` is about `AsyncResult` rather than about services.
 - Follow-up challenge: done (count atom). Next: decide component placement so a counter does not re-render unrelated UI.
+
+### `useAtomSet(..., { mode: "promise" })` and local React state next to atoms
+- Status: in_progress
+- Mastery: 3/5
+- Mental model: an `AtomResultFn` setter normally fires and forgets, the outcome lives in the atom's `AsyncResult`. With `mode: "promise"` the setter returns a `Promise` that resolves with the success value and rejects with `Cause.squash(cause)`, i.e. the error instance itself, so an event handler can `await` it and decide what to do with UI-only state (`editing`, `saving`) that no atom should hold.
+- Why this project needs it: inline rename must close the input only after the repository accepted the new title and stay open with a message otherwise; that decision belongs to the card, not to a global atom.
+- Can explain: why rename needs it and toggle/remove do not — yes, with the refinement that `waiting` already covers the intermediate state (2026-09-07); unmount question pending.
+- Can implement: partially — atom + hook written, `mode` omitted; the state was placed in the list's `map` instead of a per-card component (2026-09-07); `TodoCard` finished by the mentor in SOLUTION MODE.
+- Can debug: not yet verified
+- Alternatives/trade-offs: reading `useAtomValue(renameTodoAtom)` for the outcome (one shared atom for all cards: the last result leaks into every card); storing `editingId` in an atom (global state for a local concern).
+- Common confusion: building stateful JSX inline inside a `map` (slot) where `useState` cannot live; `handle*` aliases for hook results.
+- Follow-up challenge: done 2026-09-07 — `useTodoForm` with `.then(reset).catch(() => {})`; first draft left the rejection unhandled.

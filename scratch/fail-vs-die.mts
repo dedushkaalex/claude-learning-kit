@@ -1,5 +1,5 @@
 import { Cause, Effect, Exit } from "effect"
-import { EmptyTitle } from "../src/domain/todo.ts"
+import { EmptyTitle } from "../src/entities/todo/types.ts"
 
 const expectedError = Effect.fail(new EmptyTitle()).pipe(
   Effect.catchTag("EmptyTitle", () => Effect.succeed("recovered")),

@@ -1,5 +1,5 @@
 import { AsyncResult } from "effect/unstable/reactivity"
-import { ErrorMessage } from "../../../../shared/ui/ErrorMessage/ErrorMessage"
+import { ErrorMessage } from "@/shared/ui/ErrorMessage/ErrorMessage"
 import { useTodoForm } from "../../hooks/useTodoForm"
 import styles from "./TodoForm.module.css"
 

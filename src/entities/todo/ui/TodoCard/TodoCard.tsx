@@ -1,14 +1,50 @@
-import type { Todo } from "../../types"
+import { useState } from "react"
+import { EditableText } from "@/shared/ui/EditableText/EditableText"
+import { ErrorMessage } from "@/shared/ui/ErrorMessage/ErrorMessage"
+import { EmptyTitle, TitleTooLong, TodoNotFound, type Todo } from "../../types"
 import styles from "./TodoCard.module.css"
 
 type TodoCardProps = {
   todo: Todo
   onToggle?: ((id: Todo["id"]) => void) | undefined
   onRemove?: ((id: Todo["id"]) => void) | undefined
+  onRename?: ((id: Todo["id"], title: string) => Promise<unknown>) | undefined
 }
 
-export function TodoCard({ todo, onToggle, onRemove }: TodoCardProps) {
+function renameErrorMessage(error: unknown) {
+  if (error instanceof EmptyTitle) return "Title cannot be empty"
+  if (error instanceof TitleTooLong) return `Title must be at most ${error.max} characters`
+  if (error instanceof TodoNotFound) return "This task no longer exists"
+  return "Could not rename. Try again."
+}
+
+export function TodoCard({ todo, onToggle, onRemove, onRename }: TodoCardProps) {
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [renameError, setRenameError] = useState<unknown>(null)
   const className = todo.completed ? `${styles.item} ${styles.completed}` : styles.item
+
+  const startEditing = () => {
+    setRenameError(null)
+    setEditing(true)
+  }
+
+  const submitTitle = async (title: string) => {
+    if (!onRename) {
+      setEditing(false)
+      return
+    }
+    setSaving(true)
+    setRenameError(null)
+    try {
+      await onRename(todo.id, title)
+      setEditing(false)
+    } catch (error) {
+      setRenameError(error)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <li className={className}>
@@ -23,7 +59,20 @@ export function TodoCard({ todo, onToggle, onRemove }: TodoCardProps) {
         <span className={styles.mark} aria-hidden="true" />
       </label>
       <span className={styles.title}>
-        <span className={styles.text}>{todo.title}</span>
+        <EditableText
+          value={todo.title}
+          editing={editing}
+          saving={saving}
+          error={
+            renameError ? <ErrorMessage>{renameErrorMessage(renameError)}</ErrorMessage> : null
+          }
+          editLabel={`Rename ${todo.title}`}
+          onEdit={startEditing}
+          onCancel={() => setEditing(false)}
+          onSubmit={submitTitle}
+        >
+          <span className={styles.text}>{todo.title}</span>
+        </EditableText>
       </span>
       <button
         type="button"

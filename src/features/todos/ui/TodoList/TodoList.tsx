@@ -1,12 +1,14 @@
 import { AsyncResult } from "effect/unstable/reactivity"
-import { TodoCard } from "../../../../entities/todo/ui/TodoCard/TodoCard"
-import { ErrorMessage } from "../../../../shared/ui/ErrorMessage/ErrorMessage"
-import { StatusMessage } from "../../../../shared/ui/StatusMessage/StatusMessage"
+import { TodoCard } from "@/entities/todo/ui/TodoCard/TodoCard"
+import { ErrorMessage } from "@/shared/ui/ErrorMessage/ErrorMessage"
+import { StatusMessage } from "@/shared/ui/StatusMessage/StatusMessage"
+import type { Todo } from "@/entities/todo/types"
 import { useTodoList } from "../../hooks/useTodoList"
 import styles from "./TodoList.module.css"
 
 export function TodoList() {
-  const { todos, toggle, remove } = useTodoList()
+  const { todos, toggle, remove, rename } = useTodoList()
+  const renameTitle = (id: Todo["id"], title: string) => rename({ id, title })
 
   return AsyncResult.builder(todos)
     .onInitial(() => <StatusMessage>Loading…</StatusMessage>)
@@ -16,7 +18,13 @@ export function TodoList() {
       ) : (
         <ul className={styles.list}>
           {res.map((todo) => (
-            <TodoCard key={todo.id} todo={todo} onToggle={toggle} onRemove={remove} />
+            <TodoCard
+              key={todo.id}
+              todo={todo}
+              onToggle={toggle}
+              onRemove={remove}
+              onRename={renameTitle}
+            />
           ))}
         </ul>
       ),

@@ -2,7 +2,8 @@ import { Effect, Layer, Match } from "effect"
 import { AsyncResult, Atom } from "effect/unstable/reactivity"
 import { TodoIdGenerator } from "./todoIdGenerator"
 import { TodoRepository } from "./todoRepository"
-import { createTodo, removeTodo, toggleTodo } from "./todoService"
+import { createTodo, removeTodo, renameTodo, toggleTodo } from "./todoService"
+import type { TodoId } from "./types"
 
 const runtime = Atom.runtime(Layer.merge(TodoRepository.layerMemory, TodoIdGenerator.layer))
 
@@ -19,6 +20,10 @@ export const todosAtom = runtime
 export const createTodoAtom = runtime.fn(createTodo, { reactivityKeys: ["todos"] })
 export const removeTodoAtom = runtime.fn(removeTodo, { reactivityKeys: ["todos"] })
 export const toggleTodoAtom = runtime.fn(toggleTodo, { reactivityKeys: ["todos"] })
+export const renameTodoAtom = runtime.fn(
+  ({ id, title }: { id: TodoId; title: string }) => renameTodo(id, title),
+  { reactivityKeys: ["todos"] },
+)
 
 export type Filter = "all" | "active" | "completed"
 export const filterAtom = Atom.make<Filter>("all")

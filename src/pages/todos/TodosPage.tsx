@@ -1,7 +1,7 @@
-import { TodoCount } from "../../features/todos/ui/TodoCount/TodoCount"
-import { TodoFilter } from "../../features/todos/ui/TodoFilter/TodoFilter"
-import { TodoForm } from "../../features/todos/ui/TodoForm/TodoForm"
-import { TodoList } from "../../features/todos/ui/TodoList/TodoList"
+import { TodoCount } from "@/features/todos/ui/TodoCount/TodoCount"
+import { TodoFilter } from "@/features/todos/ui/TodoFilter/TodoFilter"
+import { TodoForm } from "@/features/todos/ui/TodoForm/TodoForm"
+import { TodoList } from "@/features/todos/ui/TodoList/TodoList"
 import styles from "./TodosPage.module.css"
 
 export function TodosPage() {
