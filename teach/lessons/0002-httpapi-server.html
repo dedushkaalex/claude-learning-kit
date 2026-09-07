@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Урок 2 — Сервер из контракта: HttpApi от схемы до порта</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<main>
+  <h1>Сервер из контракта: <code>HttpApi</code> от схемы до порта</h1>
+  <p class="lede">Один конкретный результат: после урока ты по любому входящему запросу к todo-серверу называешь, какой слой его обработает, какая схема его проверит и какой статус уйдёт в ответ, не запуская сервер.</p>
+
+  <aside class="note">Связь с проектом: это шаги 1–3 фазы 8. Файлы: <code>src/entities/todo/todoApi.ts</code> (контракт), <code>todoHandlers.ts</code> (реализация), <code>src/server/main.ts</code> (запуск). Тесты: <code>__tests__/todoApi.test.ts</code> и <code>__tests__/todoHandlers.test.ts</code>.</aside>
+
+  <h2>1. Четыре слоя, снизу вверх</h2>
+  <p>Сервер на <code>HttpApi</code> собирается из четырёх значений, и каждое следующее оборачивает предыдущее. Порядок здесь не стиль, а требование типов.</p>
+  <ol class="timeline">
+    <li><strong>Контракт.</strong> <code>HttpApi.make("todoApi").add(HttpApiGroup.make("todo").add(...endpoints))</code>. Чистые данные: пути, методы, схемы <code>params</code>, <code>payload</code>, <code>success</code>, <code>error</code>. Ни одного эффекта.</li>
+    <li><strong>Обработчики.</strong> <code>HttpApiBuilder.group(todoApi, "todo", (handlers) => handlers.handle("create", ({ payload }) => createTodo(payload.title))...)</code>. Это <code>Layer</code>, и TypeScript следит, чтобы каждое имя из контракта было реализовано ровно один раз, а ошибки обработчика совпали с объявленными.</li>
+    <li><strong>Роутер.</strong> <code>HttpApiBuilder.layer(todoApi).pipe(Layer.provide(todoHandlersLayer))</code> регистрирует маршруты, затем <code>HttpRouter.serve(api)</code> превращает их в HTTP-приложение.</li>
+    <li><strong>Порт.</strong> <code>NodeHttpServer.layer(createServer, { port })</code> из <code>@effect/platform-node</code>, и запуск: <code>NodeRuntime.runMain(Layer.launch(app))</code>.</li>
+  </ol>
+<pre><code>const api = HttpApiBuilder.layer(todoApi).pipe(Layer.provide(todoHandlersLayer))
+const app = HttpRouter.serve(api).pipe(
+  Layer.provide(Layer.merge(TodoRepository.layerMemory, TodoIdGenerator.layer)),
+  Layer.provide(NodeHttpServer.layer(createServer, { port })),
+)
+NodeRuntime.runMain(Layer.launch(app))</code></pre>
+
+  <h2>2. Что происходит с одним запросом</h2>
+  <p>Модуль <code>HttpApiBuilder</code> описывает себя одной фразой: «декодирует части запроса схемами, вызывает зарегистрированный обработчик и кодирует успех или объявленную ошибку в ответ» (<a href="https://github.com/Effect-TS/effect-smol/blob/main/packages/effect/src/unstable/httpapi/HttpApiBuilder.ts">HttpApiBuilder.ts, заголовок модуля</a>). Ниже это можно прогнать по шагам. Переключатель схемы payload воспроизводит ловушку, в которую мы попали на шаге 1: <code>Title</code> вместо <code>Schema.String</code>.</p>
+
+  <div class="panel" data-request-sim>
+    <label>Запрос <select data-request></select></label>
+    <label>Схема payload
+      <select data-payload-mode>
+        <option value="string">Struct({ title: Schema.String })</option>
+        <option value="title">Struct({ title: Title })</option>
+      </select>
+    </label>
+    <div><button class="primary" data-send>Отправить</button></div>
+    <pre class="log" data-log>Выбери запрос и нажми «Отправить».</pre>
+  </div>
+
+  <p>Предскажи, потом проверь:</p>
+  <ol>
+    <li><strong>POST /todos с пустым заголовком</strong> при обеих схемах payload. При <code>Schema.String</code> до обработчика доходит строка, домен возвращает <code>EmptyTitle</code>, и клиент увидит именно этот тег. При <code>Title</code> запрос отсекается на декодировании, тег будет общий, а объявленные в контракте ошибки становятся недостижимыми.</li>
+    <li><strong>POST /todo</strong> с опечаткой в пути. Ответ 404 приходит от роутера, а не от домена: <code>TodoNotFound</code> там нет.</li>
+    <li><strong>DELETE существующего todo.</strong> Поле <code>success</code> не объявлено, поэтому ответ 204 без тела.</li>
+  </ol>
+
+  <h2>3. Три ловушки, в которые мы уже наступили</h2>
+  <ul>
+    <li><strong>Статус живёт на схеме, которую передали в <code>error</code>.</strong> <code>HttpApiSchema.status(400)</code> на членах <code>Schema.Union</code> игнорируется: библиотека читает аннотацию с самого объединения. Поэтому либо <code>Schema.Union([...]).pipe(HttpApiSchema.status(400))</code>, либо массив схем в <code>error</code>, каждая со своим статусом. Тест <code>todoApi.test.ts</code> это фиксирует через <code>OpenApi.fromApi</code>.</li>
+    <li><strong>Тело запроса — схема, а не запись полей.</strong> Для методов с телом <code>payload</code> принимает только <code>Schema</code>: <code>Schema.Struct({ title: Schema.String })</code>. Запись <code>{ title: Schema.String }</code> годится для <code>params</code>, но не для <code>payload</code>.</li>
+    <li><strong>Зависимости обработчиков подаются после <code>serve</code>, сами обработчики до.</strong> <code>TodoRepository</code> нужен не при сборке слоя, а на каждый запрос, поэтому <code>HttpApiBuilder.group</code> записывает его в тип как требование на запрос, <code>HttpRouter.Request&lt;"Requires", …&gt;</code>. Сигнатура <code>serve</code> снимает эту обёртку и выставляет обычное требование слоя (<a href="https://github.com/Effect-TS/effect-smol/blob/main/packages/effect/src/unstable/http/HttpRouter.ts">HttpRouter.ts, <code>serve</code></a>). Если подать обработчики после <code>serve</code>, обёртка остаётся, и <code>runMain</code> не примет эффект.</li>
+  </ul>
+
+  <h2>4. Тест без сети</h2>
+  <p><code>HttpApiTest.groups(todoApi, ["todo"])</code> собирает клиент, который вызывает обработчики напрямую, минуя сокеты, но проходя через те же схемы. Ему нужны слой обработчиков, сервисы и <code>HttpServer.layerServices</code>, а сам вызов оборачивается в <code>Effect.scoped</code>. Проверка того же круга через настоящий сервер: <code>NodeHttpServer.layerTest</code> поднимает сервер на свободном порту и даёт <code>HttpClient</code> к нему.</p>
+
+  <h2>5. Проверь себя</h2>
+  <p>Сначала по памяти, потом симулятором или кодом.</p>
+  <div class="quiz" id="quiz2" data-questions='[
+    {"q":"Где должен стоять HttpApiSchema.status(400), чтобы ошибки валидации ушли с 400?",
+     "options":["На схеме, переданной в поле error","На каждом члене объединения по отдельности","На схеме успеха того же эндпоинта","На группе, к которой относится эндпоинт"],
+     "answer":0,"why":"Аннотация читается с той схемы, что лежит в error; члены объединения не просматриваются."},
+    {"q":"Что вернёт сервер, если обработчик упадёт с ошибкой, не объявленной в контракте?",
+     "options":["500, ошибка считается внутренней аварией","400, ошибка считается плохим запросом","404, ошибка считается отсутствием ресурса","200, ошибка сериализуется в тело"],
+     "answer":0,"why":"Необъявленная ошибка не имеет статуса и кодека, она становится дефектом сервера."},
+    {"q":"Куда попадают TodoRepository и TodoIdGenerator, которых требуют обработчики?",
+     "options":["Подаются серверу после HttpRouter.serve","Подаются группе до HttpRouter.serve","Подаются контракту при его создании","Подаются NodeHttpServer вместе с портом"],
+     "answer":0,"why":"serve снимает обёртку «нужно на запрос» и делает их обычными требованиями своего слоя."},
+    {"q":"Payload объявлен как Title вместо Schema.String. Что случится с пустым заголовком?",
+     "options":["Отклонится при декодировании, EmptyTitle недостижим","Дойдёт до createTodo, вернётся EmptyTitle","Сохранится как есть, без проверки","Обрежется до пустого, вернётся 404"],
+     "answer":0,"why":"Title проверяет строку на входе, до обработчика дело не доходит."}
+  ]'></div>
+
+  <h2>Первоисточник</h2>
+  <p>Установленные типы честнее любой статьи: <a href="../../node_modules/effect/dist/unstable/httpapi/HttpApiEndpoint.d.ts">HttpApiEndpoint.d.ts</a> (перегрузки <code>get</code>/<code>post</code> с полями <code>params</code>, <code>payload</code>, <code>success</code>, <code>error</code>), <a href="../../node_modules/effect/dist/unstable/httpapi/HttpApiBuilder.d.ts">HttpApiBuilder.d.ts</a> (<code>group</code>, <code>handle</code>, тип <code>HandlerRequirements</code>) и <a href="../../node_modules/effect/dist/unstable/http/HttpRouter.d.ts">HttpRouter.d.ts</a> (сигнатура <code>serve</code>). Исходники с комментариями лежат в репозитории <a href="https://github.com/Effect-TS/effect-smol/tree/main/packages/effect/src/unstable/httpapi">effect-smol</a>.</p>
+
+  <footer class="lesson-footer">
+    <p>Шпаргалка: <a href="../reference/httpapi-server.html">HttpApi-сервер</a>. Предыдущий урок: <a href="0001-deferred-unsubscribe.html">1. Почему реестр ждёт одну задачу</a>. Материалы курса: <a href="../MISSION.md">миссия</a>, <a href="../RESOURCES.md">источники</a>.</p>
+    <p>Что-то неясно? Спроси наставника в сессии: назови шаг конвейера запроса, который не складывается, и он будет разобран заново на другом запросе.</p>
+  </footer>
+</main>
+<script src="../assets/request-sim.js"></script>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

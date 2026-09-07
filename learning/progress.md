@@ -4,7 +4,7 @@
 See `learning/session.md`.
 
 ## Current Phase
-Phase 7 complete 2026-09-07 (persistence via `KeyValueStore`, `Atom.kvs`, cross-tab sync with `acquireRelease`); Phase 8 (`HttpApi`) next. Phase 6 complete 2026-09-07: exit questions answered (runtime at module level, `AsyncResult` states, unmount + pending promise, whole-list `save` race). Phase 6 ran 2026-09-06..07 (React + `@effect/atom-react`). Phase 4 done; Phase 5 folded into Phase 4 (`layer()`, `it.layer`, `TestClock`, `layerTest`).
+Phase 7 complete 2026-09-07 (persistence via `KeyValueStore`, `Atom.kvs`, cross-tab sync with `acquireRelease`); Phase 8 (`HttpApi`) started 2026-09-07. Phase 6 complete 2026-09-07: exit questions answered (runtime at module level, `AsyncResult` states, unmount + pending promise, whole-list `save` race). Phase 6 ran 2026-09-06..07 (React + `@effect/atom-react`). Phase 4 done; Phase 5 folded into Phase 4 (`layer()`, `it.layer`, `TestClock`, `layerTest`).
 
 ## Mastery Scale
 
@@ -50,6 +50,8 @@ Phase 7 complete 2026-09-07 (persistence via `KeyValueStore`, `Atom.kvs`, cross-
 | `KeyValueStore` + `toSchemaStore` + `Option.getOrElse` + `Effect.orDie` (layer with an input service) | 3/5 | `layerKeyValueStore` written after one hint about `E` of `all` (2026-09-07); asked a good question about `Effect.map` vs `Option.map` |
 | `Scope` / `Effect.acquireRelease` / atom lifetime (`useAtomMount`, deferred removal) | 3/5 | `todosSyncAtom` written from hints (key-vs-value confusion again, `release` returning `void`); explained the leak without release and why fast remounts skip acquire/release (2026-09-07) |
 | `Layer.provide` vs `Layer.provideMerge` at the runtime edge, `Atom.kvs` | 3/5 | step 3 first baked the storage layer into the entity, diagnosed it well; step 4 (`provideMerge` + `Atom.kvs` + `Schema.Literals`) correct on the first attempt (2026-09-07) |
+| `HttpApiBuilder.group` handlers | 3/5 | five handlers written unaided on the first attempt (2026-09-08) |
+| `HttpApi` definition (`HttpApiEndpoint`, `HttpApiGroup`, `HttpApiSchema.status`) | 2/5 | contract written over four rounds of corrections (paths, methods, statuses, success bodies, assembly) (2026-09-08); learned that status annotations must sit on the schema passed to `error` |
 | `AsyncResult.builder` error branches (`onErrorTag`, `orNull` vs `render`) | 3/5 | both tags handled on the second attempt; picked `render()` first despite the throw-on-unhandled explanation (2026-09-06) |
 | `Schema.TaggedError` | 3/5 | `TodoNotFound` with `id`, yielded directly; `toBeInstanceOf` assertion, 2026-09-04 |
 
@@ -75,7 +77,13 @@ Phase 7 complete 2026-09-07 (persistence via `KeyValueStore`, `Atom.kvs`, cross-
 - See `learning/mistakes.md`
 
 ## Last Completed Milestone
-2026-09-07 — Phase 7 complete: `localStorage` repository, persisted filter, cross-tab sync; both exit criteria met; `pnpm check` + `pnpm build` green, 26 tests
+2026-09-08 — Phase 8 step 3: Node server via `HttpRouter.serve` + `NodeHttpServer`, curl 200/200/400/404; `pnpm check` green, 30 tests
+
+Previous: 2026-09-08 — Phase 8 step 2: handlers layer via `HttpApiBuilder.group`, in-memory round trip through `HttpApiTest`; `pnpm check` green, 30 tests
+
+Previous: 2026-09-08 — Phase 8 step 1: `HttpApi` contract for five todo endpoints with 400/404 statuses, OpenAPI test green; `pnpm check` green, 28 tests
+
+Previous: 2026-09-07 — Phase 7 complete: `localStorage` repository, persisted filter, cross-tab sync; both exit criteria met; `pnpm check` + `pnpm build` green, 26 tests
 
 Previous: 2026-09-07 — Phase 7 step 5 + exit criterion 2: cross-tab sync via `Effect.acquireRelease` in a `runtime.atom`, release timing observed and explained (deferred removal, StrictMode); cleanup pending
 

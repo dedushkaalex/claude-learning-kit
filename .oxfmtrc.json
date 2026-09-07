@@ -3,5 +3,5 @@
   "semi": false,
   "singleQuote": false,
   "printWidth": 100,
-  "ignorePatterns": ["learning/**", "*.md"]
+  "ignorePatterns": ["learning/**", "teach/**", "*.md"]
 }

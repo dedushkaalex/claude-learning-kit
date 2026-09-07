@@ -14,10 +14,13 @@ layer(testLayer)("createTodo", (it) => {
 
       const created = yield* createTodo("Купить воду")
 
-      expect(created).toEqual([
-        { id: "todo-0", title: "Купить воду", completed: false, createdAt: new Date(0) },
-      ])
-      expect(yield* repository.all).toEqual(created)
+      expect(created).toEqual({
+        id: "todo-0",
+        title: "Купить воду",
+        completed: false,
+        createdAt: new Date(0),
+      })
+      expect(yield* repository.all).toEqual([created])
     }),
   )
 
@@ -36,20 +39,19 @@ layer(testLayer)("createTodo", (it) => {
   it.effect("toggle, rename, remove работают поверх сохранённого списка", () =>
     Effect.gen(function* () {
       const repository = yield* TodoRepository
-      const created = yield* createTodo("first")
-      const first = created[created.length - 1]
-      yield* createTodo("second")
+      const first = yield* createTodo("first")
+      const second = yield* createTodo("second")
 
       const toggled = yield* toggleTodo(first.id)
-      expect(toggled.find((todo) => todo.id === first.id)?.completed).toBe(true)
+      expect(toggled).toEqual({ ...first, completed: true })
 
       const renamed = yield* renameTodo(first.id, "  renamed  ")
-      expect(renamed.find((todo) => todo.id === first.id)?.title).toBe("renamed")
+      expect(renamed).toEqual({ ...toggled, title: "renamed" })
 
-      const removed = yield* removeTodo(first.id)
-      expect(removed.map((todo) => todo.title)).not.toContain("renamed")
-      expect(removed.map((todo) => todo.title)).toContain("second")
-      expect(yield* repository.all).toEqual(removed)
+      yield* removeTodo(first.id)
+      const all = yield* repository.all
+      expect(all).toContainEqual(second)
+      expect(all.some((todo) => todo.id === first.id)).toBe(false)
     }),
   )
 

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник — HttpApi-сервер в effect rc.112</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<main>
+  <h1>HttpApi-сервер в <code>effect@4.0.0-rc.112</code></h1>
+  <p class="lede">Проверено на todo-сервере 08.09.2026: модули <code>effect/unstable/httpapi</code>, <code>effect/unstable/http</code>, <code>@effect/platform-node</code>.</p>
+
+  <h2>Контракт</h2>
+  <table>
+    <tr><th>Что</th><th>Как</th></tr>
+    <tr><td>Эндпоинт</td><td><code>HttpApiEndpoint.get | post | patch | put | delete("name", "/todos/:id", { params, query, payload, success, error })</code></td></tr>
+    <tr><td><code>params</code></td><td>Запись полей: <code>{ id: TodoId }</code>. Параметр может стоять в середине пути: <code>/todos/:id/toggle</code>.</td></tr>
+    <tr><td><code>payload</code></td><td>Для методов с телом только схема: <code>Schema.Struct({ title: Schema.String })</code>. Валидацию оставляй домену, иначе объявленные ошибки недостижимы.</td></tr>
+    <tr><td><code>success</code></td><td>Схема ответа. По умолчанию <code>HttpApiSchema.NoContent</code> (204). Возвращай то, что вернул use case.</td></tr>
+    <tr><td><code>error</code></td><td>Схема или массив схем. Статус через <code>HttpApiSchema.status(404)(TodoNotFound)</code> на той схеме, что передана сюда. Без аннотации будет 500.</td></tr>
+    <tr><td>Сборка</td><td><code>HttpApi.make("todoApi").add(HttpApiGroup.make("todo").add(e1, e2, ...))</code></td></tr>
+    <tr><td>Проверка контракта</td><td><code>OpenApi.fromApi(api)</code> → пути, методы, статусы ответов.</td></tr>
+  </table>
+
+  <h2>Обработчики</h2>
+<pre><code>export const todoHandlersLayer = HttpApiBuilder.group(todoApi, "todo", (handlers) =>
+  handlers
+    .handle("todos", () => Effect.flatMap(TodoRepository, (r) => r.all))
+    .handle("create", ({ payload }) => createTodo(payload.title))
+    .handle("remove", ({ params: { id } }) => removeTodo(id)),   // success NoContent → обработчик возвращает void
+)</code></pre>
+  <ul>
+    <li>Аргумент обработчика: <code>{ params, payload }</code>, уже декодированные.</li>
+    <li><code>E</code> обработчика обязан входить в объявленные ошибки эндпоинта, иначе слой не соберётся.</li>
+    <li>Сервисы из <code>R</code> обработчиков попадают в тип слоя как <code>HttpRouter.Request&lt;"Requires", …&gt;</code>.</li>
+  </ul>
+
+  <h2>Запуск</h2>
+<pre><code>const api = HttpApiBuilder.layer(todoApi, { openapiPath: "/docs/openapi.json" }).pipe(
+  Layer.provide(todoHandlersLayer),                     // до serve
+)
+const app = HttpRouter.serve(api).pipe(
+  Layer.provide(services),                              // после serve
+  Layer.provide(NodeHttpServer.layer(createServer, { port })),
+)
+NodeRuntime.runMain(Layer.launch(app))</code></pre>
+  <p>Запуск в проекте: <code>pnpm dev:server</code> (tsx с <code>--tsconfig tsconfig.server.json</code>, иначе алиас <code>@/</code> не разрешится).</p>
+
+  <h2>Тесты</h2>
+  <table>
+    <tr><th>Уровень</th><th>Инструмент</th></tr>
+    <tr><td>Контракт</td><td><code>OpenApi.fromApi</code> + <code>expect</code> по путям и статусам</td></tr>
+    <tr><td>Обработчики без сети</td><td><code>HttpApiTest.groups(api, ["todo"])</code> + слой обработчиков + сервисы + <code>HttpServer.layerServices</code> + <code>Effect.scoped</code></td></tr>
+    <tr><td>Настоящий сервер</td><td><code>NodeHttpServer.layerTest</code> поднимает сервер на свободном порту и даёт <code>HttpClient</code>; клиент через <code>HttpApiClient.make(api)</code></td></tr>
+  </table>
+
+  <h2>Что уходит клиенту</h2>
+  <table>
+    <tr><th>Ситуация</th><th>Статус</th><th>Тело</th></tr>
+    <tr><td>Маршрут не найден</td><td>404</td><td>ответ роутера</td></tr>
+    <tr><td>params или payload не прошли схему</td><td>400</td><td><code>HttpApiDecodeError</code></td></tr>
+    <tr><td>Объявленная ошибка домена</td><td>из аннотации</td><td><code>{ _tag, ...поля }</code>, восстанавливается на клиенте в тот же класс</td></tr>
+    <tr><td>Дефект или необъявленная ошибка</td><td>500</td><td>без деталей</td></tr>
+    <tr><td>Успех без <code>success</code></td><td>204</td><td>пусто</td></tr>
+  </table>
+
+  <footer class="lesson-footer">
+    <p>Уроки: <a href="../lessons/0002-httpapi-server.html">2. Сервер из контракта</a>, <a href="../lessons/0001-deferred-unsubscribe.html">1. Почему реестр ждёт одну задачу</a>. Другие справочники: <a href="atom-lifetime.html">жизненный цикл атома</a>.</p>
+  </footer>
+</main>
+</body>
+</html>

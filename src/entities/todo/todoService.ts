@@ -15,18 +15,25 @@ const updateTodos = Effect.fn("updateTodos")(function* <E, R>(
   return next
 })
 
-export const createTodo = Effect.fn("createTodo")((title: string) =>
-  updateTodos((todos) => TodoRules.addTodo(todos, title)),
-)
+const pickTodo = (todos: ReadonlyArray<Todo>, id: TodoId) =>
+  TodoRules.findTodo(todos, id).pipe(Effect.orDie)
 
-export const toggleTodo = Effect.fn("toggleTodo")((id: TodoId) =>
-  updateTodos((todos) => TodoRules.toggleTodo(todos, id)),
-)
+export const createTodo = Effect.fn("createTodo")(function* (title: string) {
+  const todo = yield* TodoRules.newTodo(title)
+  yield* updateTodos((todos) => Effect.succeed([...todos, todo]))
+  return todo
+})
 
-export const renameTodo = Effect.fn("renameTodo")((id: TodoId, title: string) =>
-  updateTodos((todos) => TodoRules.renameTodo(todos, id, title)),
-)
+export const toggleTodo = Effect.fn("toggleTodo")(function* (id: TodoId) {
+  const todos = yield* updateTodos((todos) => TodoRules.toggleTodo(todos, id))
+  return yield* pickTodo(todos, id)
+})
+
+export const renameTodo = Effect.fn("renameTodo")(function* (id: TodoId, title: string) {
+  const todos = yield* updateTodos((todos) => TodoRules.renameTodo(todos, id, title))
+  return yield* pickTodo(todos, id)
+})
 
 export const removeTodo = Effect.fn("removeTodo")((id: TodoId) =>
-  updateTodos((todos) => TodoRules.removeTodo(todos, id)),
+  updateTodos((todos) => TodoRules.removeTodo(todos, id)).pipe(Effect.asVoid),
 )

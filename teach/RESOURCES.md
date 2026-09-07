@@ -34,6 +34,12 @@
   Plain explanation of the 5-minute GC timer after the last observer unmounts. Use for: a second voice on `gcTime`.
 - [Article: useEffect Fired Twice and It Found a Real Bug — DEV Community](https://dev.to/rbonweb/useeffect-fired-twice-and-it-found-a-real-bug-5438)
   A leaked subscription found by StrictMode's double cycle. Use for: why not to disable StrictMode.
+- [Source: `HttpApiBuilder.ts` in effect-smol (v4)](https://github.com/Effect-TS/effect-smol/blob/main/packages/effect/src/unstable/httpapi/HttpApiBuilder.ts)
+  Module header states the request pipeline: decode parts with schemas, run the handler, encode success or declared error. Use for: what happens to one request on the server.
+- [Source: `HttpRouter.ts` in effect-smol (v4)](https://github.com/Effect-TS/effect-smol/blob/main/packages/effect/src/unstable/http/HttpRouter.ts)
+  `serve` signature converts `Request<"Requires", R>` phantoms into server requirements; `provideRequest` implementation. Use for: why handlers go before `serve` and services after.
+- [Installed types: `HttpApiEndpoint.d.ts`, `HttpApiBuilder.d.ts`, `HttpApiTest.d.ts` (rc.112)](../node_modules/effect/dist/unstable/httpapi/)
+  Exact overloads of `get/post/patch/delete`, `payload` constraint (schema for body methods), `HttpApiTest.groups`. Use for: any "which option is allowed here" question.
 
 ## Wisdom (Communities)
 
@@ -43,6 +49,7 @@
   Use for: confirming whether a behaviour is intended before relying on it.
 
 ## Gaps
+- No prose documentation for v4 `HttpApi` yet (effect.website covers v3); the module headers and d.ts files are the reference.
 - There is no single canonical name for the pattern; libraries call it deferred unsubscribe, delayed reset, gcTime, release buffer. Search by those words.
 - No prose documentation for `AtomRegistry` internals in rc.112; the source is the only reference.
 - Zustand docs were not fetched (404); its `subscribe` is a plain listener list with immediate unsubscribe, unverified here.
