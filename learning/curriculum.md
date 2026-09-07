@@ -208,9 +208,9 @@ See `learning/progress.md`. A concept counts as learned at 4/5: implemented with
 **Why now:** this is the first real payoff of Phase 4. The React code does not change.
 
 ### Concepts
-- [ ] `KeyValueStore` from `effect/unstable/persistence`; `BrowserKeyValueStore.layerLocalStorage` from `@effect/platform-browser`
+- [ ] `KeyValueStore` from `effect/unstable/persistence`; `KeyValueStore.layerStorage(() => localStorage)` (verified in rc.112: the Web Storage layer lives in `effect` itself, `@effect/platform-browser` is not needed)
 - [ ] `KeyValueStore.toSchemaStore` (or manual encode/decode with `Schema`) to store `ReadonlyArray<Todo>` as JSON
-- [ ] `TodoRepository.layerLocalStorage` built with `Layer.effect` and `Layer.provide(BrowserKeyValueStore.layerLocalStorage)`
+- [ ] `TodoRepository.layerKeyValueStore` built with `Layer.effect` (requires `KeyValueStore`), `Layer.provide(KeyValueStore.layerStorage(() => localStorage))` at the runtime edge
 - [ ] Handling corrupt stored data: `SchemaError` → fallback to empty list, logged, not crashed
 - [ ] `KeyValueStore.layerMemory` as the test double so `layerLocalStorage` logic is testable in Node
 - [ ] `Atom.kvs` for small UI preferences (current filter) as a contrast to repository-level persistence

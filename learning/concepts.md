@@ -147,9 +147,33 @@ Add concepts below this line.
 - Mastery: 3/5
 - Mental model: an `AtomResultFn` setter normally fires and forgets, the outcome lives in the atom's `AsyncResult`. With `mode: "promise"` the setter returns a `Promise` that resolves with the success value and rejects with `Cause.squash(cause)`, i.e. the error instance itself, so an event handler can `await` it and decide what to do with UI-only state (`editing`, `saving`) that no atom should hold.
 - Why this project needs it: inline rename must close the input only after the repository accepted the new title and stay open with a message otherwise; that decision belongs to the card, not to a global atom.
-- Can explain: why rename needs it and toggle/remove do not — yes, with the refinement that `waiting` already covers the intermediate state (2026-09-07); unmount question pending.
+- Can explain: why rename needs it and toggle/remove do not — yes, with the refinement that `waiting` already covers the intermediate state (2026-09-07); unmount question answered correctly (2026-09-07). Interrupt semantics of `runtime.fn` (same atom re-written -> previous fiber interrupted; different atoms independent) explained by the mentor after a guessed answer.
 - Can implement: partially — atom + hook written, `mode` omitted; the state was placed in the list's `map` instead of a per-card component (2026-09-07); `TodoCard` finished by the mentor in SOLUTION MODE.
 - Can debug: not yet verified
 - Alternatives/trade-offs: reading `useAtomValue(renameTodoAtom)` for the outcome (one shared atom for all cards: the last result leaks into every card); storing `editingId` in an atom (global state for a local concern).
 - Common confusion: building stateful JSX inline inside a `map` (slot) where `useState` cannot live; `handle*` aliases for hook results.
 - Follow-up challenge: done 2026-09-07 — `useTodoForm` with `.then(reset).catch(() => {})`; first draft left the rejection unhandled.
+
+### `KeyValueStore` + `toSchemaStore` (repository over a string store)
+- Status: in_progress
+- Mastery: 3/5
+- Mental model: `KeyValueStore` is a service with `get/set` over strings (`localStorage` shape); `toSchemaStore(kv, schema)` wraps it so `get` returns `Option<Type>` and `set` takes `Type`, JSON-encoding through the schema (`DateFromString` round-trips). A layer that `yield*`s it gets `KeyValueStore` in its `R` and is satisfied later with `Layer.provide`.
+- Why this project needs it: second `TodoRepository` implementation (browser persistence) without touching React code — the payoff of Phase 4.
+- Can explain: `Effect.map` vs `Option.map` after `pipe` — asked and understood (2026-09-07); `E` of `get` (`KeyValueStoreError | SchemaError`) — missed first, understood after a hint.
+- Can implement: yes, with one hint (2026-09-07).
+- Can debug: read the tsc stack bottom-up after being shown how.
+- Alternatives/trade-offs: manual `JSON.parse` + `Schema.decodeUnknownEffect` (same thing by hand); storing one key per todo (avoids the whole-list race, more keys to manage).
+- Common confusion: believing a read has no error channel; `Option.getOrElse(() => [])` inferring `never[]`.
+- Follow-up challenge: step 2 done 2026-09-07 (`catchTag` before `orDie`; learned that `SchemaError` on write is a defect, on read an expected case). Next: wire `layerStorage(() => localStorage)`.
+
+### `Scope` and `Effect.acquireRelease` inside an atom (resource lifetime = mount lifetime)
+- Status: in_progress
+- Mastery: 3/5
+- Mental model: `Scope` is a list of finalizers closed at the end; `acquireRelease` runs `acquire` now and parks `release` in the current `Scope`. `runtime.atom` supplies the `Scope` and closes it when the atom loses its last subscriber — one task later, and only if nobody re-subscribed in between (StrictMode / fast toggles keep the resource alive).
+- Why this project needs it: a `storage` listener for cross-tab sync must be removed when the list unmounts, otherwise handlers accumulate and each one invalidates `todos`.
+- Can explain: the leak without release and the deferred-removal behaviour — yes (2026-09-07).
+- Can implement: with hints (release must return an effect; the service key is not the service).
+- Can debug: read `A`/`R` of the failing effect type to locate the wrong atom and the non-effect `yield*` (guided).
+- Alternatives/trade-offs: `useEffect` with `addEventListener` in the component (works, but the invalidation logic leaks into React); `Atom.make` with `get.addFinalizer` (no Effect, no `Scope`).
+- Common confusion: `Ref.make` at module level is still an effect — each `yield*` makes a new `Ref`; `Ref.makeUnsafe` creates one now.
+- Follow-up challenge: Phase 8 — an HTTP client layer whose connection/fetch is a scoped resource.

@@ -4,7 +4,7 @@
 See `learning/session.md`.
 
 ## Current Phase
-Phase 6 started 2026-09-06 (React + `@effect/atom-react`). Phase 4 done; Phase 5 folded into Phase 4 (`layer()`, `it.layer`, `TestClock`, `layerTest`).
+Phase 7 complete 2026-09-07 (persistence via `KeyValueStore`, `Atom.kvs`, cross-tab sync with `acquireRelease`); Phase 8 (`HttpApi`) next. Phase 6 complete 2026-09-07: exit questions answered (runtime at module level, `AsyncResult` states, unmount + pending promise, whole-list `save` race). Phase 6 ran 2026-09-06..07 (React + `@effect/atom-react`). Phase 4 done; Phase 5 folded into Phase 4 (`layer()`, `it.layer`, `TestClock`, `layerTest`).
 
 ## Mastery Scale
 
@@ -25,7 +25,7 @@ Phase 6 started 2026-09-06 (React + `@effect/atom-react`). Phase 4 done; Phase 5
 | `Effect.fn` / `Effect.gen` / `yield*` | 3/5 | written without hints |
 | `pipe` + `flatMap` | 3/5 | chose `pipe` for a 3-step chain on own initiative |
 | `Effect.flip` | 3/5 | reused unaided for the TaggedError test, 2026-09-04 |
-| `Effect.catchTag` | 2/5 | found on own initiative; the partial-handling test was written by mentor in SOLUTION MODE (2026-09-04) — needs an independent use |
+| `Effect.catchTag` | 3/5 | used independently for `SchemaError` in `layerKeyValueStore.all` (2026-09-07); first draft put `Effect.as` outside the handler and also caught on `save` where a defect is right |
 | `Effect.filterOrFail` | 2/5 | used for `EmptyTitle` on own initiative |
 | `Effect.tap` | 2/5 | used with `Effect.sync` for a mid-chain assertion, own initiative (2026-09-04) |
 | Reusing helper effects (`findTodo`) | 3/5 | `removeTodo` written unaided on first try |
@@ -47,6 +47,9 @@ Phase 6 started 2026-09-06 (React + `@effect/atom-react`). Phase 4 done; Phase 5
 | `AsyncResult` states: `Initial` vs `waiting` flag | 3/5 | observed no flicker with the sync memory layer, understood why `onInitial` is right for the list (2026-09-06) |
 | Derived atoms: `Atom.make((get) => ...)`, `Atom.make(initial)` + `useAtom`, `AsyncResult.map` | 4/5 | filter written after the theory, first draft used `Effect.gen` + `get.result`; "N items left" counter written independently on first attempt (2026-09-06); correctly traced what re-runs on a toggle (including `TodoFilter` because the counter lives there) and that `E = never` makes the non-defect `onFailure` branch unreachable |
 | `useAtomSet(..., { mode: "promise" })` + local `useState` next to atom state | 3/5 | step 7 (2026-09-07): wrote the atom and the hook but omitted `mode: "promise"`, put the per-card `editing` state in the list's `map` via a slot; mentor finished `TodoCard` in SOLUTION MODE; `useTodoForm` follow-up done unaided (first draft leaked an unhandled rejection, fixed after a question); explained why toggle/remove need no promise |
+| `KeyValueStore` + `toSchemaStore` + `Option.getOrElse` + `Effect.orDie` (layer with an input service) | 3/5 | `layerKeyValueStore` written after one hint about `E` of `all` (2026-09-07); asked a good question about `Effect.map` vs `Option.map` |
+| `Scope` / `Effect.acquireRelease` / atom lifetime (`useAtomMount`, deferred removal) | 3/5 | `todosSyncAtom` written from hints (key-vs-value confusion again, `release` returning `void`); explained the leak without release and why fast remounts skip acquire/release (2026-09-07) |
+| `Layer.provide` vs `Layer.provideMerge` at the runtime edge, `Atom.kvs` | 3/5 | step 3 first baked the storage layer into the entity, diagnosed it well; step 4 (`provideMerge` + `Atom.kvs` + `Schema.Literals`) correct on the first attempt (2026-09-07) |
 | `AsyncResult.builder` error branches (`onErrorTag`, `orNull` vs `render`) | 3/5 | both tags handled on the second attempt; picked `render()` first despite the throw-on-unhandled explanation (2026-09-06) |
 | `Schema.TaggedError` | 3/5 | `TodoNotFound` with `id`, yielded directly; `toBeInstanceOf` assertion, 2026-09-04 |
 
@@ -56,6 +59,7 @@ Phase 6 started 2026-09-06 (React + `@effect/atom-react`). Phase 4 done; Phase 5
 - Immutable updates (`map` with spread) come naturally
 
 ## Weak Areas
+- Confuses a service key (class) with the value it yields: `Clock` (2026-09-05), `Reactivity` (2026-09-07); and an effect that creates a `Ref` with the `Ref` itself (2026-09-07)
 - Reaches for a service/layer where a plain function suffices; declares interfaces with `E = never` that hide domain errors
 - Thinks of error propagation as "handling": needs the short-circuit model (`yield*` on a failure stops the generator)
 - Module dependency direction: put a domain type (`TodoId`) into a service file; domain must not depend on infrastructure
@@ -63,13 +67,27 @@ Phase 6 started 2026-09-06 (React + `@effect/atom-react`). Phase 4 done; Phase 5
 - Side effect (`crypto.randomUUID()`) moved from `Effect.sync` into an `Effect.map` callback — convention issue to discuss
 - Skips design questions when not tied to a task (ReadonlyArray asymmetry asked 3 times)
 - Leaves unused imports after experiments (`Layer` twice, `Exit`, `TodoItem`); reports "done" without running `pnpm check` - agreed 2026-09-06 that "done" implies a green check
-- Reads the top-most editor diagnostic instead of the first `tsc` error (language-service `missingEffectContext` vs `Cannot find name`)
+- Reads the top-most editor diagnostic instead of the first `tsc` error; taught 2026-09-07 to read a nested TS2379 stack from the deepest line upward
+- Provided a concrete layer inside the entity instead of at the runtime edge (2026-09-07); diagnosed it correctly once the test crashed
+- Assumes a read operation "has no errors" — check the `E` of the underlying call before deciding (language-service `missingEffectContext` vs `Cannot find name`)
 
 ## Recurring Mistakes
 - See `learning/mistakes.md`
 
 ## Last Completed Milestone
-2026-09-07 — Phase 6 step 7 follow-up: `useTodoForm` in promise mode, form reset only after success; `pnpm check` green, 23 tests
+2026-09-07 — Phase 7 complete: `localStorage` repository, persisted filter, cross-tab sync; both exit criteria met; `pnpm check` + `pnpm build` green, 26 tests
+
+Previous: 2026-09-07 — Phase 7 step 5 + exit criterion 2: cross-tab sync via `Effect.acquireRelease` in a `runtime.atom`, release timing observed and explained (deferred removal, StrictMode); cleanup pending
+
+Previous: 2026-09-07 — Phase 7 step 4: filter persisted with `Atom.kvs`, `KeyValueStore` exposed via `Layer.provideMerge`, done independently on the first attempt; `pnpm check` + `pnpm build` green, 26 tests
+
+Previous: 2026-09-07 — Phase 7 step 3: `localStorage` wired at the runtime edge, `features`/`pages` untouched (`git diff --stat`); `pnpm check` + `pnpm build` green, 26 tests
+
+Previous: 2026-09-07 — Phase 7 step 2: corrupt stored JSON -> empty list + warning inside the repository, contract unchanged; `pnpm check` green, 26 tests (after three rounds of unused imports)
+
+Previous: 2026-09-07 — Phase 7 step 1: `TodoRepository.layerKeyValueStore` over `KeyValueStore` + `toSchemaStore`, tested through `layerMemory`; `pnpm check` green, 26 tests
+
+Previous: 2026-09-07 — Phase 6 step 7 follow-up: `useTodoForm` in promise mode, form reset only after success; `pnpm check` green, 23 tests
 
 Previous: 2026-09-07 — Phase 6 step 7: inline rename via `renameTodoAtom` + `mode: "promise"`, `TodoCard` owns edit state (finished in SOLUTION MODE); `pnpm check` + `pnpm build` green, 23 tests
 

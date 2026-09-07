@@ -43,6 +43,7 @@ Add recurring mistakes below this line.
 - Fix: for a single implementation write a plain `Effect.fn` and let `E`/`R` be inferred; declare a service only when a second implementation or shared state justifies it, and copy the real `E` into the shape.
 
 ## Unused import left after an experiment (TS6133)
-- Seen: `Layer` in a test file twice (2026-09-05), `Exit` in `src/App.tsx` and `TodoItem` in `src/ui/TodoListView.tsx` (2026-09-06). `pnpm check` fails on typecheck before tests even run.
+- Seen: `Layer` in a test file twice (2026-09-05), `Exit` in `src/App.tsx` and `TodoItem` in `src/ui/TodoListView.tsx` (2026-09-06), `pipe` in `todoRepository.ts` reported "готово" twice with it still there, then `Cause`/`Exit` in `todoRepository.test.ts` (2026-09-07). `pnpm check` fails on typecheck before tests even run.
+- Pattern 2026-09-07: three "готово" in a row on Phase 7 step 2 without running `pnpm check`; each round the mentor found the next unused import. The agreement "done = green check" is not being applied.
 - Why it happens: an import is added while trying an API, the code path is deleted, the import line stays; the editor shows no red because the language service diagnostic sits below the fold.
 - Fix: run `pnpm typecheck` before reporting "done"; read the first `tsc` error, not the editor's top-most one.

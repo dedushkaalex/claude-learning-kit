@@ -1,5 +1,6 @@
 import { expect, layer } from "@effect/vitest"
 import { Effect, Layer } from "effect"
+import { KeyValueStore } from "effect/unstable/persistence"
 import { addTodo } from "../todoRules"
 import { TodoIdGenerator } from "../todoIdGenerator"
 import { TodoRepository } from "../todoRepository"
@@ -37,3 +38,42 @@ layer(TodoRepository.layerMemory)("TodoRepository.layerMemory", (it) => {
     }),
   )
 })
+
+layer(TodoRepository.layerKeyValueStore.pipe(Layer.provideMerge(KeyValueStore.layerMemory)))(
+  "TodoRepository.layerKeyValueStore",
+  (it) => {
+    it.effect("пустое хранилище: all возвращает пустой список", () =>
+      Effect.gen(function* () {
+        const repository = yield* TodoRepository
+
+        expect(yield* repository.all).toEqual([])
+      }),
+    )
+
+    it.effect("save кладёт JSON под ключ todos, all читает его обратно вместе с Date", () =>
+      Effect.gen(function* () {
+        const repository = yield* TodoRepository
+        const store = yield* KeyValueStore.KeyValueStore
+        const todos = yield* addTodo([], "first").pipe(Effect.provide(TodoIdGenerator.layerTest))
+
+        yield* repository.save(todos)
+
+        expect(yield* store.get("todos")).toContain('"title":"first"')
+        expect(yield* repository.all).toEqual(todos)
+      }),
+    )
+
+    it.effect("мусор под ключом todos даёт пустой список, а не падение", () =>
+      Effect.gen(function* () {
+        const repository = yield* TodoRepository
+        const store = yield* KeyValueStore.KeyValueStore
+
+        yield* store.set("todos", "{oops")
+
+        const result = yield* repository.all
+
+        expect(result).toEqual([])
+      }),
+    )
+  },
+)
