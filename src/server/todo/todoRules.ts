@@ -1,6 +1,6 @@
 import { DateTime, Effect, Schema } from "effect"
 import { TodoIdGenerator } from "./todoIdGenerator"
-import { EmptyTitle, Title, TitleTooLong, Todo, TodoId, TodoNotFound } from "./types"
+import { EmptyTitle, Title, TitleTooLong, Todo, TodoId, TodoNotFound } from "@/entities/todo/types"
 
 export const findTodo = Effect.fn("findTodo")(function* (todos: ReadonlyArray<Todo>, id: TodoId) {
   const todo = todos.find((todo) => todo.id === id)

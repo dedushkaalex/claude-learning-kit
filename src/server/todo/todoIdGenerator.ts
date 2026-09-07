@@ -1,5 +1,5 @@
 import { Context, Effect, Layer, Ref } from "effect"
-import { TodoId } from "./types"
+import { TodoId } from "@/entities/todo/types"
 
 export class TodoIdGenerator extends Context.Service<
   TodoIdGenerator,

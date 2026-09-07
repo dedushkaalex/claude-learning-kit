@@ -1,5 +1,5 @@
 import { HttpApiBuilder } from "effect/unstable/httpapi"
-import { todoApi } from "./todoApi"
+import { todoApi } from "@/entities/todo/todoApi"
 import { Effect } from "effect"
 import { TodoRepository } from "./todoRepository"
 import { createTodo, removeTodo, renameTodo, toggleTodo } from "./todoService"

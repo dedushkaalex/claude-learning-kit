@@ -1,5 +1,5 @@
 import { Context, Effect, Layer, Option, Ref, Schema } from "effect"
-import { Todo } from "./types"
+import { Todo } from "@/entities/todo/types"
 import { KeyValueStore } from "effect/unstable/persistence"
 
 const TODOS_STORAGE_KEY = "todos"

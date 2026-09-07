@@ -1,6 +1,6 @@
 import { expect, layer } from "@effect/vitest"
 import { Cause, Effect, Exit, Layer } from "effect"
-import { EmptyTitle, TodoId, TodoNotFound } from "../types"
+import { EmptyTitle, TodoId, TodoNotFound } from "@/entities/todo/types"
 import { TodoIdGenerator } from "../todoIdGenerator"
 import { TodoRepository } from "../todoRepository"
 import { createTodo, removeTodo, renameTodo, toggleTodo } from "../todoService"

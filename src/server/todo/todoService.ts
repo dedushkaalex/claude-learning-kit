@@ -1,7 +1,7 @@
 import { Effect } from "effect"
 import * as TodoRules from "./todoRules"
 import { TodoRepository } from "./todoRepository"
-import type { Todo, TodoId } from "./types"
+import type { Todo, TodoId } from "@/entities/todo/types"
 
 const updateTodos = Effect.fn("updateTodos")(function* <E, R>(
   step: (todos: ReadonlyArray<Todo>) => Effect.Effect<ReadonlyArray<Todo>, E, R>,

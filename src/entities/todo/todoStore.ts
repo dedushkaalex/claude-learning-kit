@@ -1,51 +1,45 @@
-import { Effect, Layer, Match, Schema } from "effect"
-import { TodoIdGenerator } from "./todoIdGenerator"
-import { TodoRepository } from "./todoRepository"
-import { createTodo, removeTodo, renameTodo, toggleTodo } from "./todoService"
+import { ConfigProvider, Effect, Layer, Match, Schema } from "effect"
+import { TodoClient } from "./todoClient"
 import type { TodoId } from "./types"
+import { FetchHttpClient } from "effect/unstable/http"
 import { KeyValueStore } from "effect/unstable/persistence"
-import { AsyncResult, Atom, Reactivity } from "effect/unstable/reactivity"
+import { AsyncResult, Atom } from "effect/unstable/reactivity"
 
-const todoRepositoryLayer = Layer.provideMerge(
-  TodoRepository.layerKeyValueStore,
-  KeyValueStore.layerStorage(() => localStorage),
+const browserConfig = ConfigProvider.layer(
+  ConfigProvider.fromEnvRecord({ TODO_API_URL: import.meta.env.VITE_TODO_API_URL }),
 )
 
-const runtime = Atom.runtime(Layer.merge(todoRepositoryLayer, TodoIdGenerator.layer))
+const todoClientLayer = TodoClient.layer.pipe(
+  Layer.provide(FetchHttpClient.layer),
+  Layer.provide(browserConfig),
+)
+
+const runtime = Atom.runtime(
+  Layer.merge(
+    todoClientLayer,
+    KeyValueStore.layerStorage(() => localStorage),
+  ),
+)
 
 export const todosAtom = runtime
-  .atom(
-    Effect.gen(function* () {
-      const todos = yield* TodoRepository
-      return yield* todos.all
-    }),
-  )
+  .atom(Effect.flatMap(TodoClient, (client) => client.todos()))
   .pipe(Atom.withReactivity(["todos"]))
 
-export const todosSyncAtom = runtime.atom(
-  Effect.gen(function* () {
-    const reactivity = yield* Reactivity.Reactivity
-
-    yield* Effect.acquireRelease(
-      Effect.sync(() => {
-        const handler = (event: StorageEvent) => {
-          if (event.key === "todos") {
-            reactivity.invalidateUnsafe(["todos"])
-          }
-        }
-        window.addEventListener("storage", handler)
-        return handler
-      }),
-      (handler) => Effect.sync(() => window.removeEventListener("storage", handler)),
-    )
-  }),
+export const createTodoAtom = runtime.fn(
+  (title: string) => Effect.flatMap(TodoClient, (client) => client.create(title)),
+  { reactivityKeys: ["todos"] },
 )
-
-export const createTodoAtom = runtime.fn(createTodo, { reactivityKeys: ["todos"] })
-export const removeTodoAtom = runtime.fn(removeTodo, { reactivityKeys: ["todos"] })
-export const toggleTodoAtom = runtime.fn(toggleTodo, { reactivityKeys: ["todos"] })
+export const removeTodoAtom = runtime.fn(
+  (id: TodoId) => Effect.flatMap(TodoClient, (client) => client.remove(id)),
+  { reactivityKeys: ["todos"] },
+)
+export const toggleTodoAtom = runtime.fn(
+  (id: TodoId) => Effect.flatMap(TodoClient, (client) => client.toggle(id)),
+  { reactivityKeys: ["todos"] },
+)
 export const renameTodoAtom = runtime.fn(
-  ({ id, title }: { id: TodoId; title: string }) => renameTodo(id, title),
+  (input: { id: TodoId; title: string }) =>
+    Effect.flatMap(TodoClient, (client) => client.rename(input)),
   { reactivityKeys: ["todos"] },
 )
 

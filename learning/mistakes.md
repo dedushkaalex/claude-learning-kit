@@ -45,5 +45,6 @@ Add recurring mistakes below this line.
 ## Unused import left after an experiment (TS6133)
 - Seen: `Layer` in a test file twice (2026-09-05), `Exit` in `src/App.tsx` and `TodoItem` in `src/ui/TodoListView.tsx` (2026-09-06), `pipe` in `todoRepository.ts` reported "готово" twice with it still there, then `Cause`/`Exit` in `todoRepository.test.ts` (2026-09-07). `pnpm check` fails on typecheck before tests even run.
 - Pattern 2026-09-07: three "готово" in a row on Phase 7 step 2 without running `pnpm check`; each round the mentor found the next unused import. The agreement "done = green check" is not being applied.
+- Pattern 2026-09-08: `HttpApi` in `todoClient.ts` survived two "готово" reports on Phase 8 step 4; the same `tsc` line both times. Mentor removed it during the requested refactor.
 - Why it happens: an import is added while trying an API, the code path is deleted, the import line stays; the editor shows no red because the language service diagnostic sits below the fold.
 - Fix: run `pnpm typecheck` before reporting "done"; read the first `tsc` error, not the editor's top-most one.

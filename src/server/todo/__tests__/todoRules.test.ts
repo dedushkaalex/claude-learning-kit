@@ -1,7 +1,7 @@
 import { expect, layer } from "@effect/vitest"
 import { Effect, pipe, Schema } from "effect"
 import { addTodo, removeTodo, renameTodo, toggleTodo } from "../todoRules"
-import { EmptyTitle, TitleTooLong, Todo, TodoId, TodoNotFound } from "../types"
+import { EmptyTitle, TitleTooLong, Todo, TodoId, TodoNotFound } from "@/entities/todo/types"
 import { TodoIdGenerator } from "../todoIdGenerator"
 import { TestClock } from "effect/testing"
 

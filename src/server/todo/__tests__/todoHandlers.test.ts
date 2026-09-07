@@ -3,10 +3,10 @@ import { Effect, Layer } from "effect"
 import { HttpRouter, HttpServer } from "effect/unstable/http"
 import { HttpApiTest } from "effect/unstable/httpapi"
 import { todoHandlersLayer } from "../todoHandlers"
-import { todoApi } from "../todoApi"
+import { todoApi } from "@/entities/todo/todoApi"
 import { TodoIdGenerator } from "../todoIdGenerator"
 import { TodoRepository } from "../todoRepository"
-import { TodoId } from "../types"
+import { TodoId } from "@/entities/todo/types"
 
 const services = Layer.merge(TodoRepository.layerMemory, TodoIdGenerator.layerTest)
 const testLayer = Layer.mergeAll(
