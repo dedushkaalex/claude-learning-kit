@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник — жизненный цикл атома и освобождение ресурсов</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<main>
+  <h1>Жизненный цикл атома и освобождение ресурсов</h1>
+  <p class="lede">Шпаргалка по атомам в <code>effect@4.0.0-rc.112</code>. Сверено с установленным исходным кодом и пробным тестом реестра 07.09.2026.</p>
+
+  <h2>Таймлайн одного размонтирования</h2>
+  <ol class="timeline">
+    <li>Выполняется очистка компонента, <code>useAtomMount</code> отписывается. Счётчик подписчиков падает до 0.</li>
+    <li>Реестр планирует проверку в следующей задаче (<code>scheduleNodeRemoval</code>, задержка 0). Ничего ещё не разобрано.</li>
+    <li>Всё, что выполняется до этой задачи, включая повторное монтирование в том же коммите React, может подписаться снова.</li>
+    <li>Задача выполняется. Если <code>canBeRemoved</code> всё ещё истинно, узел удаляется: <code>Scope</code> атома закрывается, выполняется <code>release</code> из <code>acquireRelease</code>, файбер прерывается. Иначе атом остаётся как есть.</li>
+  </ol>
+
+  <h2>Глоссарий</h2>
+  <table>
+    <tr><th>Термин</th><th>Что означает здесь</th></tr>
+    <tr><td>mount (монтирование)</td><td>Появился подписчик (<code>useAtomValue</code>, <code>useAtomMount</code>, <code>registry.mount</code>). Первый подписчик запускает атом.</td></tr>
+    <tr><td>acquire / release</td><td>Две половины <code>Effect.acquireRelease</code>. <code>release</code> кладётся в <code>Scope</code> атома.</td></tr>
+    <tr><td>Scope</td><td>Список финализаторов, который закрывается при удалении узла атома. <code>runtime.atom</code> даёт свой на каждый запуск.</td></tr>
+    <tr><td>отложенное удаление</td><td>Разбор происходит в следующей задаче и только если никто не подписался снова.</td></tr>
+    <tr><td><code>keepAlive</code></td><td>Никогда не удалять узел: атом хранит состояние и ресурсы, пока живёт реестр.</td></tr>
+    <tr><td><code>idleTTL</code> / <code>setIdleTTL</code></td><td>Держать узел заданное время после последней отписки, прежде чем удалить.</td></tr>
+    <tr><td>ключ реактивности</td><td>Метка, по которой читающий атом перезапускается после мутации (<code>withReactivity</code>, <code>reactivityKeys</code>, <code>invalidateUnsafe</code>).</td></tr>
+  </table>
+
+  <h2>Как другие библиотеки отвечают на «когда разбирать»</h2>
+  <table>
+    <tr><th>Библиотека</th><th>Когда уходит последний потребитель</th><th>Ручка</th></tr>
+    <tr><td>Обычный счётчик / EventEmitter</td><td>Сразу</td><td>нет</td></tr>
+    <tr><td>Jotai</td><td>Сразу: <code>onUnmount</code>, затем снова <code>onMount</code> при повторном монтировании</td><td>не задокументирована</td></tr>
+    <tr><td>Реестр атомов Effect</td><td>Следующая задача, если атом всё ещё не нужен</td><td><code>keepAlive</code>, <code>setIdleTTL</code></td></tr>
+    <tr><td>TanStack Query</td><td>Через <code>gcTime</code> (5 минут по умолчанию), отменяется при повторном монтировании</td><td><code>gcTime</code></td></tr>
+    <tr><td>RxJS <code>share</code></td><td>Настраивается: сразу, никогда или после срабатывания уведомителя</td><td><code>resetOnRefCountZero</code></td></tr>
+  </table>
+
+  <h2>Правила на каждый день</h2>
+  <ul>
+    <li>Клади ресурс в атом, а не в <code>useEffect</code>, когда его жизнь должна совпадать с «кто-то смотрит на эти данные», а не с «этот компонент существует».</li>
+    <li><code>release</code> обязан возвращать <code>Effect</code>; голый <code>void</code> ломает вывод типов и проявляется как <code>R = unknown</code>.</li>
+    <li>Ключ сервиса (<code>Reactivity.Reactivity</code>) это не сам сервис: один раз сделай <code>yield*</code> и замыкай значение в обработчиках.</li>
+    <li><code>Ref.make(0)</code> на уровне модуля всё ещё эффект: каждый <code>yield*</code> создаёт новую ячейку. Для одной ячейки на модуль есть <code>Ref.makeUnsafe</code>.</li>
+  </ul>
+
+  <footer class="lesson-footer">
+    <p>Уроки: <a href="../lessons/0001-deferred-unsubscribe.html">1. Почему реестр ждёт одну задачу</a>.</p>
+  </footer>
+</main>
+</body>
+</html>

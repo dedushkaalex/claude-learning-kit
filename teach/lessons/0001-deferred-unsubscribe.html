@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Урок 1 — Почему реестр атомов ждёт одну задачу, прежде чем разобрать атом</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<main>
+  <h1>Почему реестр атомов ждёт одну задачу, прежде чем разобрать атом</h1>
+  <p class="lede">Один конкретный результат: после урока ты смотришь на любую последовательность «смонтировали, размонтировали, смонтировали снова» и говоришь, выполнятся ли <code>acquire</code> и <code>release</code>, не запуская код.</p>
+
+  <aside class="note">Связь с проектом: это ровно тот вопрос, который остался открытым после шага 5 фазы 7. Ресурс здесь — обработчик события <code>storage</code> внутри <code>todosSyncAtom</code>, а монтирование — <code>useAtomMount</code> в <code>useTodoList</code>.</aside>
+
+  <h2>1. Вопрос на обычном JavaScript</h2>
+  <p>На минуту забудем про Effect. Любая библиотека, которая делит один ресурс между несколькими потребителями, держит счётчик. Первый потребитель создаёт ресурс, последний уничтожает. Вся идея в двенадцати строках:</p>
+<pre><code>let subscribers = 0
+let handler = null
+
+function subscribe() {
+  subscribers += 1
+  if (handler === null) {
+    handler = () => invalidate("todos")
+    window.addEventListener("storage", handler)   // acquire
+  }
+  return function unsubscribe() {
+    subscribers -= 1
+    if (subscribers === 0) teardown()             // а когда именно?
+  }
+}</code></pre>
+  <p>Весь урок про комментарий в последней строке. Честных ответа два.</p>
+
+  <h3>Ответ А: разобрать прямо сейчас</h3>
+<pre><code>function teardown() {
+  window.removeEventListener("storage", handler)  // release
+  handler = null
+}</code></pre>
+  <p>Просто и предсказуемо. Каждая отписка, доводящая счётчик до нуля, оплачивает <code>release</code>, а следующая подписка снова оплачивает <code>acquire</code>.</p>
+
+  <h3>Ответ Б: разобрать одной задачей позже, если ресурс всё ещё никому не нужен</h3>
+<pre><code>let checkScheduled = false
+
+function teardown() {
+  if (checkScheduled) return
+  checkScheduled = true
+  setTimeout(() => {                 // «следующая задача»
+    checkScheduled = false
+    if (subscribers === 0) {         // всё ещё никого? тогда правда освобождаем
+      window.removeEventListener("storage", handler)
+      handler = null
+    }
+  }, 0)
+}</code></pre>
+  <p>Именно так устроен реестр атомов в Effect. В файле <a href="../../node_modules/effect/dist/unstable/reactivity/AtomRegistry.js">AtomRegistry.js</a> отписка вызывает <code>scheduleNodeRemoval</code>, тот ставит задачу с задержкой 0, а задача перед удалением проверяет <code>node.canBeRemoved</code>. Таймаута простоя у <code>runtime.atom</code> по умолчанию нет, поэтому «позже» означает следующую задачу, а не секунды.</p>
+
+  <h2>2. Прогони оба ответа сам</h2>
+  <p>Панель ниже — ответы А и Б рядом. <em>Mount</em> — то, что делает <code>useAtomMount</code>, когда список появляется, <em>Unmount</em> — его очистка, <em>Следующая задача</em> даёт запланированной проверке выполниться. Кнопка <em>Коммит StrictMode</em> делает то же, что React в dev-режиме: setup, cleanup, setup, всё внутри одного коммита, до того как любая задача успеет выполниться.</p>
+
+  <div class="panel" data-lifecycle-sim>
+    <label>Стратегия
+      <select data-strategy>
+        <option value="deferred">Б: проверка в следующей задаче (реестр Effect)</option>
+        <option value="immediate">А: release сразу (обычный счётчик, Jotai)</option>
+      </select>
+    </label>
+    <label><input type="checkbox" data-leak> забыть <code>removeEventListener</code> в release</label>
+    <div>
+      <button class="primary" data-mount>Mount</button>
+      <button data-unmount>Unmount</button>
+      <button data-task>Следующая задача</button>
+      <button data-strict>Коммит StrictMode</button>
+      <button data-storage>storage из другой вкладки</button>
+      <button data-reset>Сброс</button>
+    </div>
+    <div class="status">
+      <span>подписчиков <strong data-subs>0</strong></span>
+      <span>живых обработчиков на window <strong data-live>0</strong></span>
+      <span>проверка запланирована <strong data-pending>нет</strong></span>
+    </div>
+    <pre class="log" data-log></pre>
+  </div>
+
+  <p>Три прогона. Перед каждым кликом сначала предскажи, что появится в логе:</p>
+  <ol>
+    <li><strong>Коммит StrictMode</strong> при стратегии Б, затем <strong>Следующая задача</strong>. Ожидай один <code>acquire</code> и ни одного <code>release</code>: проверка находит подписчика и оставляет атом.</li>
+    <li>Переключись на стратегию А и снова нажми <strong>Коммит StrictMode</strong>. Ожидай <code>acquire</code>, <code>release</code>, <code>acquire</code>: счётчик коснулся нуля, а ответ А не ждёт. Это та последовательность, о которой предупреждает документация Jotai: атом «может быть размонтирован и тут же смонтирован снова» (<a href="https://jotai.org/docs/core/atom">Jotai: atom</a>).</li>
+    <li>Вернись к Б. Поставь галочку <strong>забыть removeEventListener</strong>, затем Mount, Unmount, Следующая задача, Mount, Unmount, Следующая задача, Mount и нажми <strong>storage из другой вкладки</strong>. Посчитай, сколько раз вызвался <code>invalidate</code>. Это та самая утечка, которую ты воспроизвёл в приложении кнопкой hide/visible.</li>
+  </ol>
+
+  <h2>3. Почему библиотеки выбирают ответ Б</h2>
+  <p>У ответа А три цены, и каждая проявляется в настоящих приложениях. Каждая из них — причина подождать.</p>
+  <ul>
+    <li><strong>Пересоздать ресурс не бесплатно.</strong> Обработчик события дёшев. WebSocket, уже летящий fetch или подписка на серверный поток — нет. Освободить и тут же получить заново в пределах одной миллисекунды значит выбросить эту работу.</li>
+    <li><strong>Состояние сбрасывается в «начальное».</strong> Разобранный эффект-атом теряет свой <code>AsyncResult</code>. При новом монтировании UI на миг показывает «загрузка» для данных, которые секунду назад были. TanStack Query решает ровно эту проблему: когда последний наблюдатель размонтируется, кэш не удаляется, а запускается таймер <code>gcTime</code>, по умолчанию пять минут, и он отменяется, если компонент успевает смонтироваться снова (<a href="https://tanstack.com/query/latest/docs/framework/react/guides/caching">TanStack Query: Caching</a>).</li>
+    <li><strong>Фреймворки размонтируют и монтируют нарочно.</strong> StrictMode в React выполняет «один дополнительный цикл setup+cleanup в dev-режиме для каждого эффекта», чтобы вскрыть отсутствующую очистку (<a href="https://react.dev/reference/react/StrictMode">React: StrictMode</a>). Suspense, смена <code>key</code> и условный рендер делают похожее и в продакшене. Библиотека, разбирающая ресурс синхронно, платит за каждый такой случай.</li>
+  </ul>
+  <p>Отложить на одну задачу — минимальное ожидание, при котором все случаи «размонтировали и смонтировали в одном коммите» становятся бесплатными, а освобождение всё равно происходит быстро, если потребитель действительно ушёл. У RxJS та же ручка: <code>share({ resetOnRefCountZero })</code> принимает фабрику-уведомитель именно для «условного или отложенного сброса», когда подписчиков стало ноль (<a href="https://rxjs.dev/api/index/function/share">RxJS: share</a>).</p>
+
+  <h2>4. А что со StrictMode в твоём коде?</h2>
+  <p>Реестр прячет двойной цикл StrictMode от атомов. От обычного <code>useEffect</code> с <code>addEventListener</code> он его не прячет: там очистка выполняется синхронно, и отсутствующая очистка видна как удвоенный обработчик при первой же загрузке страницы. Это тот баг, ради которого StrictMode существует, и совет React — чинить очистку, а не подавлять второй запуск (<a href="https://react.dev/learn/synchronizing-with-effects">React: Synchronizing with Effects</a>). Выключенный StrictMode убирает сигнализацию, а не утечку.</p>
+
+  <h2>5. Проверь себя</h2>
+  <p>Сначала ответь по памяти, потом подтверди в симуляторе.</p>
+  <div class="quiz" id="quiz1" data-questions='[
+    {"q":"Список размонтировался и в том же коммите смонтировался снова. Что выполнится в реестре Effect?",
+     "options":["Сначала release, потом acquire","Ни release, ни acquire","Только release, без acquire","Только acquire, без release"],
+     "answer":1,"why":"Проверка выполняется одной задачей позже, находит подписчика и оставляет атом живым."},
+    {"q":"Что решает, будет ли атом действительно разобран?",
+     "options":["Проверка в следующей запланированной задаче","Счётчик в момент самого размонтирования","Пятиминутный таймер, заданный по умолчанию","Коммит React, который убрал компонент"],
+     "answer":0,"why":"scheduleNodeRemoval ставит задачу, а задача заново проверяет canBeRemoved."},
+    {"q":"Без removeEventListener в release: после первого монтирования и трёх циклов скрыть/показать сколько обработчиков висит на window?",
+     "options":["Четыре: каждое монтирование добавило один","Три: по одному на скрытие","Два: первое и последнее монтирование","Один: новое монтирование заменяет старый"],
+     "answer":0,"why":"Каждый acquire добавляет обработчик, и ничто его не снимает."},
+    {"q":"Какая библиотека откладывает разбор по таймеру в минутах?",
+     "options":["TanStack Query через опцию gcTime","Jotai через колбэк onUnmount атома","React StrictMode через цикл очистки","Effect atom через опцию keepAlive"],
+     "answer":0,"why":"gcTime по умолчанию пять минут; keepAlive не разбирает атом вообще."}
+  ]'></div>
+
+  <h2>Первоисточник</h2>
+  <p>Прочитай двадцать строк от <code>subscribe</code> до <code>removeNode</code> в <a href="../../node_modules/effect/dist/unstable/reactivity/AtomRegistry.js">установленном <code>AtomRegistry.js</code></a>. Всё выше — пересказ этих строк. Со стороны React читать раздел <em>Fixing bugs found by re-running Effects in development</em> в <a href="https://react.dev/reference/react/StrictMode">справке по StrictMode</a>.</p>
+
+  <h2>Читать дальше: тот же приём под другими именами</h2>
+  <p>У приёма нет одного общепринятого названия, поэтому в каждой библиотеке он зовётся по-своему. Ищи по этим словам.</p>
+  <ul>
+    <li><a href="https://github.com/maxbendick/rxjs-ShareReplayWithDeferredUnsubscribe">rxjs-ShareReplayWithDeferredUnsubscribe</a> — «deferred unsubscribe»: когда все наблюдатели ушли, отписка от источника откладывается до сигнала-триггера. Самая чистая форма приёма, README на один экран.</li>
+    <li><a href="https://github.com/ReactiveX/rxjs/pull/6169">RxJS PR #6169</a> и статья <a href="https://dev.to/this-is-learning/rxjs-multicast-operator-1k9i">RxJS Multicast Operator (dev.to)</a> — как в <code>share</code> появился <code>resetOnRefCountZero: () => timer(ms)</code> и зачем.</li>
+    <li><a href="https://github.com/facebook/relay/issues/3298">Relay issue #3298</a> — «useLazyLoadQuery breaks with GC after quick unmount → mount»: настоящий баг от немедленной сборки мусора. Ответ Relay — <a href="https://relay.dev/docs/guided-tour/reusing-cached-data/presence-of-data/">release buffer</a>: отпущенные запросы держатся в буфере на 10 штук, а планировщик GC можно подменить.</li>
+    <li><a href="https://github.com/pmndrs/jotai/issues/2179">Jotai issue #2179</a> — «onMount cleanup called right after mount in React dev mode»: как выглядит боль от ответа А в StrictMode.</li>
+    <li><a href="https://medium.com/@bloodturtle/understanding-staletime-vs-gctime-in-tanstack-query-e9928d3e41d4">Understanding staleTime vs gcTime (Medium)</a> — таймер сборки мусора на пять минут после ухода последнего наблюдателя, простыми словами.</li>
+    <li><a href="https://dev.to/rbonweb/useeffect-fired-twice-and-it-found-a-real-bug-5438">useEffect Fired Twice and It Found a Real Bug (dev.to)</a> — утечка подписки, которую вскрыл двойной цикл StrictMode.</li>
+  </ul>
+
+  <footer class="lesson-footer">
+    <p>Шпаргалка: <a href="../reference/atom-lifetime.html">жизненный цикл атома</a>. Материалы курса: <a href="../MISSION.md">миссия</a>, <a href="../RESOURCES.md">источники</a>.</p>
+    <p>Что-то неясно? Спроси наставника в сессии: назови шаг таймлайна, который не складывается, и он будет разобран заново на другом примере.</p>
+  </footer>
+</main>
+<script src="../assets/lifecycle-sim.js"></script>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>
