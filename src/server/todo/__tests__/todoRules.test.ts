@@ -12,7 +12,7 @@ layer(TodoIdGenerator.layer)("todo", (it) => {
         const todos = yield* pipe(
           addTodo([], "first"),
           Effect.flatMap((one) => addTodo(one, "second")),
-          Effect.flatMap((todos) => toggleTodo(todos, todos[0].id)),
+          Effect.flatMap((todos) => toggleTodo({ todos, id: todos[0].id, completed: true })),
         )
 
         expect(todos).toEqual([
@@ -38,7 +38,7 @@ layer(TodoIdGenerator.layer)("todo", (it) => {
       const result = yield* pipe(
         addTodo([], "first"),
         Effect.flatMap((one) => addTodo(one, "second")),
-        Effect.flatMap((todos) => Effect.flip(toggleTodo(todos, testId))),
+        Effect.flatMap((todos) => Effect.flip(toggleTodo({ todos, id: testId, completed: true }))),
       )
 
       expect(result).toBeInstanceOf(TodoNotFound)

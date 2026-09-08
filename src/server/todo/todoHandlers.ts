@@ -9,6 +9,6 @@ export const todoHandlersLayer = HttpApiBuilder.group(todoApi, "todo", (handlers
     .handle("todos", () => Effect.flatMap(TodoRepository, (r) => r.all))
     .handle("create", ({ payload }) => createTodo(payload.title))
     .handle("rename", ({ params: { id }, payload: { title } }) => renameTodo(id, title))
-    .handle("toggle", ({ params: { id } }) => toggleTodo(id))
+    .handle("toggle", ({ params: { id }, payload: { completed } }) => toggleTodo(id, completed))
     .handle("remove", ({ params: { id } }) => removeTodo(id)),
 )

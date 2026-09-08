@@ -1,4 +1,4 @@
-import type { Filter } from "@/entities/todo/todoStore"
+import type { Filter } from "../../model/filter"
 import { useTodoFilter } from "../../hooks/useTodoFilter"
 import styles from "./TodoFilter.module.css"
 

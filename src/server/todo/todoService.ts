@@ -24,8 +24,8 @@ export const createTodo = Effect.fn("createTodo")(function* (title: string) {
   return todo
 })
 
-export const toggleTodo = Effect.fn("toggleTodo")(function* (id: TodoId) {
-  const todos = yield* updateTodos((todos) => TodoRules.toggleTodo(todos, id))
+export const toggleTodo = Effect.fn("toggleTodo")(function* (id: TodoId, value: boolean) {
+  const todos = yield* updateTodos((todos) => TodoRules.toggleTodo({ todos, id, completed: value }))
   return yield* pickTodo(todos, id)
 })
 

@@ -37,12 +37,17 @@ export const addTodo = Effect.fn("addTodo")(function* (todos: ReadonlyArray<Todo
   return added
 })
 
-export const toggleTodo = Effect.fn("toggleTodo")(function* (
-  todos: ReadonlyArray<Todo>,
-  id: TodoId,
-) {
+export const toggleTodo = Effect.fn("toggleTodo")(function* ({
+  id,
+  todos,
+  completed,
+}: {
+  todos: ReadonlyArray<Todo>
+  id: TodoId
+  completed: boolean
+}) {
   yield* findTodo(todos, id)
-  return replaceTodo(todos, id, (todo) => ({ ...todo, completed: !todo.completed }))
+  return replaceTodo(todos, id, (todo) => ({ ...todo, completed }))
 })
 
 export const renameTodo = Effect.fn("renameTodo")(function* (

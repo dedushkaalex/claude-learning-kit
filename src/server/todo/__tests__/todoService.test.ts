@@ -42,7 +42,7 @@ layer(testLayer)("createTodo", (it) => {
       const first = yield* createTodo("first")
       const second = yield* createTodo("second")
 
-      const toggled = yield* toggleTodo(first.id)
+      const toggled = yield* toggleTodo(first.id, true)
       expect(toggled).toEqual({ ...first, completed: true })
 
       const renamed = yield* renameTodo(first.id, "  renamed  ")
@@ -60,7 +60,7 @@ layer(testLayer)("createTodo", (it) => {
       const repository = yield* TodoRepository
       const before = yield* repository.all
 
-      const error = yield* Effect.flip(toggleTodo(TodoId.make("nope")))
+      const error = yield* Effect.flip(toggleTodo(TodoId.make("nope"), true))
 
       expect(error).toBeInstanceOf(TodoNotFound)
       expect(yield* repository.all).toEqual(before)
@@ -78,7 +78,7 @@ layer(testLayer)("createTodo", (it) => {
   )("со сломанным хранилищем", (it) => {
     it.effect("toggleTodo умирает дефектом, а не TodoNotFound", () =>
       Effect.gen(function* () {
-        const exit = yield* Effect.exit(toggleTodo(TodoId.make("any")))
+        const exit = yield* Effect.exit(toggleTodo(TodoId.make("any"), true))
 
         expect(Exit.isFailure(exit)).toBe(true)
         if (Exit.isFailure(exit)) {

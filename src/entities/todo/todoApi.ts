@@ -32,6 +32,9 @@ const toggleTodo = HttpApiEndpoint.patch("toggle", "/todos/:id/toggle", {
   params: {
     id: TodoId,
   },
+  payload: Schema.Struct({
+    completed: Schema.Boolean,
+  }),
   success: Todo,
   error: NotFound,
 })

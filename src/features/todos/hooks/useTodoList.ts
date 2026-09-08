@@ -1,10 +1,6 @@
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
-import {
-  removeTodoAtom,
-  renameTodoAtom,
-  toggleTodoAtom,
-  visibleTodosAtom,
-} from "@/entities/todo/todoStore"
+import { removeTodoAtom, renameTodoAtom, toggleTodoAtom } from "@/entities/todo/todoStore"
+import { visibleTodosAtom } from "../model/filter"
 
 export function useTodoList() {
   const todos = useAtomValue(visibleTodosAtom)

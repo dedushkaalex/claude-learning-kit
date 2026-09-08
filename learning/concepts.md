@@ -177,3 +177,47 @@ Add concepts below this line.
 - Alternatives/trade-offs: `useEffect` with `addEventListener` in the component (works, but the invalidation logic leaks into React); `Atom.make` with `get.addFinalizer` (no Effect, no `Scope`).
 - Common confusion: `Ref.make` at module level is still an effect — each `yield*` makes a new `Ref`; `Ref.makeUnsafe` creates one now.
 - Follow-up challenge: Phase 8 — an HTTP client layer whose connection/fetch is a scoped resource.
+
+### `HttpApi` contract (`HttpApiGroup` / `HttpApiEndpoint` / `HttpApiSchema.status`)
+- Status: done (Phase 8, 2026-09-08)
+- Mastery: 3/5
+- Mental model: one value describes paths, methods, params, payload, success and error schemas; server handlers and client methods are both derived from it, so a contract change is a compile error on both sides.
+- Why this project needs it: the whole-list `save` repository cannot be served over HTTP; the browser needs five operations.
+- Can explain: yes (path names the collection, method names the action; status lives on the schema passed to `error`).
+- Can implement: yes after four correction rounds (paths, methods, statuses, `Void` successes, `Title` in payload).
+- Can debug: partially (`OpenApi.fromApi` as the inspection tool).
+- Alternatives/trade-offs: hand-written fetch + schemas (no shared contract); `Title` in the payload makes domain errors unreachable client-side.
+- Common confusion: "REST singular for one resource"; statuses annotated on union members instead of the union.
+- Follow-up challenge: add an endpoint end to end without hints (done as the exit check: `toggle` with `{ completed }` payload).
+
+### `HttpApiClient.make` / `makeWith` and the transport policy (`HttpClient.retry`, `Effect.timeout`)
+- Status: done (Phase 8, 2026-09-08)
+- Mastery: 3/5
+- Mental model: the generated client methods carry declared errors plus `HttpClientError | SchemaError`; a port service (`TodoClient`) wraps them with domain arguments and turns transport errors into defects. `transformClient` cannot widen `E`; `makeWith` takes a prepared `HttpClient` and pushes its extra `E` (`TimeoutError`) into the methods.
+- Why this project needs it: atoms must not know request shapes; retry/timeout belong to the transport.
+- Can explain: yes — retry only on `TransportError` because a timed-out request may already have been processed (`create`/`toggle` not idempotent); made `toggle` idempotent as the exit check.
+- Can implement: yes (`pipe` + guard predicate); data-last `retry` infers `E` from the predicate — split the chain and use data-first to see the real types.
+- Can debug: learned to read stacked TS errors (first error, first three lines; `never` probe; a `=>` in a value type means an unapplied function).
+- Alternatives/trade-offs: `retryTransient` (cannot be narrowed); derived service interface via `Effect.Success<typeof make>` leaks `E` silently (happened with `TimeoutError`).
+- Common confusion: `HttpClient.HttpClient` (raw fetch-like) vs the api client; data-last vs data-first inference.
+- Follow-up challenge: per-endpoint retry policy (idempotent endpoints may retry timeouts).
+
+### `Config` + `ConfigProvider` (a `Context.Reference` with `fromEnv` default)
+- Status: done (Phase 8, 2026-09-08, SOLUTION MODE at the student's request)
+- Mastery: 2/5
+- Mental model: `Config.string(key)` is an effect that reads through the `ConfigProvider` reference; `withDefault` covers "missing"; `ConfigProvider.layer(fromEnvRecord(...))` overrides at the edge (browser: `import.meta.env`, `VITE_` prefix mapped explicitly).
+- Why this project needs it: the same `layerHttp` must run in tests (no env, relative URLs via `layerTest`) and in the browser (`.env`).
+- Can explain: partially (chose `Config` over `Context.Reference` himself).
+- Can implement: not yet demonstrated unaided.
+- Can debug: —
+- Alternatives/trade-offs: `Context.Reference<string>` (no `ConfigError`, code-only override); layer factory `layerHttp(baseUrl)`.
+- Common confusion: —
+- Follow-up challenge: move the port of the server to `Config.port` (Phase 10 lists it).
+
+### `it.live` vs `it.effect` (`TestClock`) with schedules and timeouts
+- Status: done (Phase 8, 2026-09-08, mentor-driven)
+- Mastery: 2/5
+- Mental model: `it.effect` runs under `TestClock`; any `Schedule`/`Effect.sleep`/`Effect.timeout` waits for `TestClock.adjust`, otherwise the test hangs to the vitest timeout. `it.live` uses the real clock. A timeout test forks the call (`Effect.forkChild`), adjusts the clock, joins.
+- Why this project needs it: the retry schedule froze the absolute-URL test.
+- Can explain: seen, not yet reproduced by the student.
+- Follow-up challenge: write a `TestClock`-driven retry test (currently `it.live`).

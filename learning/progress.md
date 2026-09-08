@@ -4,7 +4,7 @@
 See `learning/session.md`.
 
 ## Current Phase
-Phase 7 complete 2026-09-07 (persistence via `KeyValueStore`, `Atom.kvs`, cross-tab sync with `acquireRelease`); Phase 8 (`HttpApi`) started 2026-09-07. Phase 6 complete 2026-09-07: exit questions answered (runtime at module level, `AsyncResult` states, unmount + pending promise, whole-list `save` race). Phase 6 ran 2026-09-06..07 (React + `@effect/atom-react`). Phase 4 done; Phase 5 folded into Phase 4 (`layer()`, `it.layer`, `TestClock`, `layerTest`).
+Phase 8 complete 2026-09-08 (contract, handlers, Node server, `TodoClient`, `Config`, browser edge, retry on `TransportError` only, per-request timeout; exit check: idempotent `toggle` end to end with one hint). Phase 9 (concurrency) started 2026-09-08. Phase 7 complete 2026-09-07 (persistence via `KeyValueStore`, `Atom.kvs`, cross-tab sync with `acquireRelease`); Phase 8 (`HttpApi`) started 2026-09-07. Phase 6 complete 2026-09-07: exit questions answered (runtime at module level, `AsyncResult` states, unmount + pending promise, whole-list `save` race). Phase 6 ran 2026-09-06..07 (React + `@effect/atom-react`). Phase 4 done; Phase 5 folded into Phase 4 (`layer()`, `it.layer`, `TestClock`, `layerTest`).
 
 ## Mastery Scale
 
@@ -77,7 +77,11 @@ Phase 7 complete 2026-09-07 (persistence via `KeyValueStore`, `Atom.kvs`, cross-
 - See `learning/mistakes.md`
 
 ## Last Completed Milestone
-2026-09-08 — Phase 8 step 3: Node server via `HttpRouter.serve` + `NodeHttpServer`, curl 200/200/400/404; `pnpm check` green, 30 tests
+2026-09-08 — Phase 8 steps 7–8: retry only on `TransportError` (`HttpClient.retry` + `while`), per-request `Effect.timeout` via `HttpApiClient.makeWith`; tests with a flaky and a slow `HttpClient` wrapper (`it.live` / `TestClock`); idempotency of the five operations reasoned by the student; `pnpm check` green, 36 tests
+
+Previous: 2026-09-08 — Phase 8 steps 4–6: `TodoClient` over `HttpApiClient` with transport errors as defects, base URL via `Config`, browser wired through `FetchHttpClient` + `import.meta.env`, CORS on the server, server-only modules under `src/server/todo`; verified in Chrome; `pnpm check` green, 33 tests; commit 5e594c4
+
+Previous: 2026-09-08 — Phase 8 step 3: Node server via `HttpRouter.serve` + `NodeHttpServer`, curl 200/200/400/404; `pnpm check` green, 30 tests
 
 Previous: 2026-09-08 — Phase 8 step 2: handlers layer via `HttpApiBuilder.group`, in-memory round trip through `HttpApiTest`; `pnpm check` green, 30 tests
 

@@ -1,7 +1,7 @@
 # Roadmap — Todo List on Effect v4 (RC) + React
 
 ## Current Phase
-Phase 6 — React integration (`@effect/atom-react`)
+Phase 9 — Concurrency (optimistic updates, bounded batch operations, stale request cancellation)
 
 ## Current Goal
 Render the todo list from `TodoRepository` through `Atom.runtime` + `runtime.atom`, then wire mutations via `runtime.fn`.
@@ -18,10 +18,10 @@ Each entry maps a curriculum phase to the application increment that makes it ne
 | 3 | Schema | `Todo`, `TodoId`, `NewTodoInput` schemas; form input decoded | `Schema.Struct`/`Class`, brands, checks, decode/encode, Type vs Encoded | done |
 | 4 | Services and layers | `TodoRepository` interface + `layerMemory`; `TodoService` with domain rules; wiring at the entry point | `Context.Service`, `Layer.effect`/`succeed`, `Layer.provide`, `R` channel, memoization | done |
 | 5 | Testing | Tests for `TodoService` with a test layer and controlled time | `@effect/vitest`, `it.effect`, `it.layer`, `TestClock` | done (folded into Phase 4) |
-| 6 | React integration | List, add, toggle, remove, filter in React via atoms | `Atom.runtime`, `runtime.atom`/`fn`, `AsyncResult`, hooks, `Atom.family`, interruption on unmount | in_progress |
-| 7 | Browser persistence | `layerLocalStorage`; filter saved via `Atom.kvs`; cross-tab sync | `KeyValueStore`, `BrowserKeyValueStore`, `Layer.scoped`, finalizers | not_started |
-| 8 | HTTP API | Node server with `HttpApi`; `layerHttp` client in the React app | `HttpApiGroup`/`Endpoint`/`Builder`, `HttpApiClient`, `FetchHttpClient`, `HttpApiTest`, `Config` | not_started |
-| 9 | Concurrency | Optimistic toggle with rollback; bounded "clear completed"; stale request cancellation | fibers, structured concurrency, `forEach` concurrency, interruption, `Effect.cached` | not_started |
+| 6 | React integration | List, add, toggle, remove, filter in React via atoms | `Atom.runtime`, `runtime.atom`/`fn`, `AsyncResult`, hooks, `Atom.family`, interruption on unmount | done (2026-09-07) |
+| 7 | Browser persistence | `layerLocalStorage`; filter saved via `Atom.kvs`; cross-tab sync | `KeyValueStore`, `BrowserKeyValueStore`, `Layer.scoped`, finalizers | done (2026-09-07) |
+| 8 | HTTP API | Node server with `HttpApi`; `layerHttp` client in the React app | `HttpApiGroup`/`Endpoint`/`Builder`, `HttpApiClient`, `FetchHttpClient`, `HttpApiTest`, `Config` | done (2026-09-08, exit check: idempotent `toggle` end to end) |
+| 9 | Concurrency | Optimistic toggle with rollback; bounded "clear completed"; stale request cancellation | fibers, structured concurrency, `forEach` concurrency, interruption, `Effect.cached` | in_progress (started 2026-09-08) |
 | 10 | Observability | Spans and structured logs across click → server; config for port and URL | `Effect.fn` spans, `annotateLogs`, `Config`, error surface | not_started |
 | 11 | Independent implementation | One full feature end to end (due dates, tags, undo, or offline mode) | all of the above, chosen unaided | not_started |
 

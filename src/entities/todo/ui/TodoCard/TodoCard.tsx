@@ -6,7 +6,7 @@ import styles from "./TodoCard.module.css"
 
 type TodoCardProps = {
   todo: Todo
-  onToggle?: ((id: Todo["id"]) => void) | undefined
+  onToggle?: (({ id, completed }: { id: Todo["id"]; completed: boolean }) => void) | undefined
   onRemove?: ((id: Todo["id"]) => void) | undefined
   onRename?: ((id: Todo["id"], title: string) => Promise<unknown>) | undefined
 }
@@ -53,7 +53,7 @@ export function TodoCard({ todo, onToggle, onRemove, onRename }: TodoCardProps) 
           type="checkbox"
           className={styles.checkbox}
           checked={todo.completed}
-          onChange={() => onToggle?.(todo.id)}
+          onChange={() => onToggle?.({ id: todo.id, completed: !todo.completed })}
           aria-label={`Toggle ${todo.title}`}
         />
         <span className={styles.mark} aria-hidden="true" />

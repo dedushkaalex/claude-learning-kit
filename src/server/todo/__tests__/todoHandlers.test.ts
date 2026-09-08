@@ -22,7 +22,10 @@ it.effect("создание, переключение, переименован�
     const created = yield* client.todo.create({ payload: { title: "  first  " } })
     expect(created.title).toBe("first")
 
-    const toggled = yield* client.todo.toggle({ params: { id: created.id } })
+    const toggled = yield* client.todo.toggle({
+      params: { id: created.id },
+      payload: { completed: true },
+    })
     expect(toggled).toEqual({ ...created, completed: true })
 
     const renamed = yield* client.todo.rename({
@@ -43,7 +46,12 @@ it.effect("доменные ошибки доходят до клиента с �
     const empty = yield* Effect.flip(client.todo.create({ payload: { title: "   " } }))
     expect(empty._tag).toBe("EmptyTitle")
 
-    const missing = yield* Effect.flip(client.todo.toggle({ params: { id: TodoId.make("nope") } }))
+    const missing = yield* Effect.flip(
+      client.todo.toggle({
+        params: { id: TodoId.make("nope") },
+        payload: { completed: true },
+      }),
+    )
     expect(missing._tag).toBe("TodoNotFound")
   }).pipe(Effect.scoped, Effect.provide(Layer.fresh(testLayer))),
 )
