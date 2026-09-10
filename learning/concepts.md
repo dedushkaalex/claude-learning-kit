@@ -221,3 +221,25 @@ Add concepts below this line.
 - Why this project needs it: the retry schedule froze the absolute-URL test.
 - Can explain: seen, not yet reproduced by the student.
 - Follow-up challenge: write a `TestClock`-driven retry test (currently `it.live`).
+
+### Optimistic updates with atoms (`Atom.optimistic` + `Atom.optimisticFn`)
+- Status: done (Phase 9 steps 1-2, 2026-09-09)
+- Mastery: 4/5 (step 2 `remove` independent, first try)
+- Mental model: `Atom.optimistic(source)` is a writable mirror of the source; `optimisticFn(mirror, { reducer, fn })` writes `reducer(current, input)` into the mirror with `waiting: true`, runs `fn`, on success refreshes the source (`get.refresh(self)` in the implementation), on failure drops back to the last source value. Derived atoms must read the mirror, not the source, or the UI never sees the provisional value. The inner `runtime.fn` must not carry `reactivityKeys` for the same source (double fetch). `fn` must be the atom itself; `(set) => atom` builds a new atom per call.
+- Why this project needs it: toggle round trip on 3G was visibly slow; idempotent `toggle` (Phase 8 exit) makes the provisional value safe.
+- Can explain: why derived atoms switch to the mirror in `filter.ts` (input changed, not logic); why the other mutations keep the key (nothing else refreshes the source) — after a nudge.
+- Can debug: found the double `GET /todos` in Network unaided.
+- Alternatives/trade-offs: manual `Atom.make` copy + rollback in the handler (more code, no `waiting` semantics); no optimism + skeleton state.
+- Common confusion: reading the mirror in one consumer (hook) instead of at the derivation point; `!completed` on an input that already carries the target value; `OW` inferred as `void` when the reducer parameter is a bare destructuring pattern (fixed by annotating it).
+- Follow-up challenge: optimistic `remove` written independently (step 2).
+
+### `Effect.forEach` with `{ concurrency, discard }`
+- Status: done (Phase 9 step 3, 2026-09-10, SOLUTION MODE)
+- Mastery: 2/5
+- Mental model: one effect over an iterable; sequential by default, `concurrency: n` keeps at most n children running, `"unbounded"` starts all; `discard: true` returns `void`. Fail-fast: the first failure interrupts the other in-flight children and the whole `forEach` fails with that error (unlike `Promise.all`, which lets the rest run).
+- Why this project needs it: "Clear completed" is the first action that fans out into N requests.
+- Can explain: student reached for `forEach` + `discard` unaided; chose `"unbounded"` (browser caps at ~6 per host, server unprotected) — to be argued.
+- Can debug: not yet.
+- Alternatives/trade-offs: one server endpoint `DELETE /todos?completed=true` (atomic, one request, no partial failure; the student sketched it as `removeAll` — parked); `Effect.all` for a fixed tuple; `Semaphore` when the bound must be shared across callers.
+- Common confusion: dropping `reactivityKeys` on a plain `runtime.fn` (no optimistic wrapper refreshes the source); `(_: void) =>` vs the curried `runtime.fn<void>()`.
+- Follow-up challenge: test that at most 3 requests are in flight (counting `HttpClient` wrapper + `TestClock`), or make the bound a `Config`.

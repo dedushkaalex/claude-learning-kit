@@ -1,3 +1,4 @@
+import { ClearCompleted } from "@/features/todos/ui/ClearCompleted/ClearCompleted"
 import { TodoCount } from "@/features/todos/ui/TodoCount/TodoCount"
 import { TodoFilter } from "@/features/todos/ui/TodoFilter/TodoFilter"
 import { TodoForm } from "@/features/todos/ui/TodoForm/TodoForm"
@@ -13,6 +14,7 @@ export function TodosPage() {
       <footer className={styles.footer}>
         <TodoCount />
         <TodoFilter />
+        <ClearCompleted />
       </footer>
     </main>
   )

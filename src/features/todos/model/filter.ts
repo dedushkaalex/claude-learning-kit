@@ -1,7 +1,7 @@
 import { Match, Schema } from "effect"
 import { AsyncResult, Atom } from "effect/unstable/reactivity"
 import { runtime } from "@/entities/todo/todoRuntime"
-import { todosAtom } from "@/entities/todo/todoStore"
+import { optimisticAtom } from "@/entities/todo/todoStore"
 
 export const FilterSchema = Schema.Literals(["all", "active", "completed"])
 export type Filter = typeof FilterSchema.Type
@@ -16,7 +16,7 @@ export const filterAtom = Atom.kvs({
 export const visibleTodosAtom = Atom.make((get) => {
   const filter = get(filterAtom)
 
-  return AsyncResult.map(get(todosAtom), (todos) =>
+  return AsyncResult.map(get(optimisticAtom), (todos) =>
     Match.value(filter).pipe(
       Match.when("all", () => todos),
       Match.when("active", () => todos.filter((todo) => !todo.completed)),
@@ -27,5 +27,5 @@ export const visibleTodosAtom = Atom.make((get) => {
 })
 
 export const activeCountAtom = Atom.make((get) =>
-  AsyncResult.map(get(todosAtom), (todos) => todos.filter((todo) => !todo.completed).length),
+  AsyncResult.map(get(optimisticAtom), (todos) => todos.filter((todo) => !todo.completed).length),
 )

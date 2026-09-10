@@ -4,7 +4,7 @@
 See `learning/session.md`.
 
 ## Current Phase
-Phase 8 complete 2026-09-08 (contract, handlers, Node server, `TodoClient`, `Config`, browser edge, retry on `TransportError` only, per-request timeout; exit check: idempotent `toggle` end to end with one hint). Phase 9 (concurrency) started 2026-09-08. Phase 7 complete 2026-09-07 (persistence via `KeyValueStore`, `Atom.kvs`, cross-tab sync with `acquireRelease`); Phase 8 (`HttpApi`) started 2026-09-07. Phase 6 complete 2026-09-07: exit questions answered (runtime at module level, `AsyncResult` states, unmount + pending promise, whole-list `save` race). Phase 6 ran 2026-09-06..07 (React + `@effect/atom-react`). Phase 4 done; Phase 5 folded into Phase 4 (`layer()`, `it.layer`, `TestClock`, `layerTest`).
+Phase 9 step 3 done 2026-09-10 (SOLUTION MODE). Phase 9 step 1 done 2026-09-09 (optimistic toggle with rollback). Phase 8 complete 2026-09-08 (contract, handlers, Node server, `TodoClient`, `Config`, browser edge, retry on `TransportError` only, per-request timeout; exit check: idempotent `toggle` end to end with one hint). Phase 9 (concurrency) started 2026-09-08. Phase 7 complete 2026-09-07 (persistence via `KeyValueStore`, `Atom.kvs`, cross-tab sync with `acquireRelease`); Phase 8 (`HttpApi`) started 2026-09-07. Phase 6 complete 2026-09-07: exit questions answered (runtime at module level, `AsyncResult` states, unmount + pending promise, whole-list `save` race). Phase 6 ran 2026-09-06..07 (React + `@effect/atom-react`). Phase 4 done; Phase 5 folded into Phase 4 (`layer()`, `it.layer`, `TestClock`, `layerTest`).
 
 ## Mastery Scale
 
@@ -54,6 +54,8 @@ Phase 8 complete 2026-09-08 (contract, handlers, Node server, `TodoClient`, `Con
 | `HttpApi` definition (`HttpApiEndpoint`, `HttpApiGroup`, `HttpApiSchema.status`) | 2/5 | contract written over four rounds of corrections (paths, methods, statuses, success bodies, assembly) (2026-09-08); learned that status annotations must sit on the schema passed to `error` |
 | `AsyncResult.builder` error branches (`onErrorTag`, `orNull` vs `render`) | 3/5 | both tags handled on the second attempt; picked `render()` first despite the throw-on-unhandled explanation (2026-09-06) |
 | `Schema.TaggedError` | 3/5 | `TodoNotFound` with `id`, yielded directly; `toBeInstanceOf` assertion, 2026-09-04 |
+| `Atom.optimistic` / `Atom.optimisticFn` (optimistic update + rollback) | 4/5 | Toggle (2026-09-09, two wrong turns) then `remove` written independently, clean on the first try, check green before reporting |
+| `Effect.forEach` with `{ concurrency, discard }` (bounded parallel requests, fail-fast) | 2/5 | "Clear completed" finished in SOLUTION MODE 2026-09-10; student's draft had the right shape (`forEach` + `discard`) but `"unbounded"`, no reactivity key; 404 question pending |
 
 ## Strengths
 - Prefers to spend time on domain/Effect code; routine tests delegated to mentor (agreed 2026-09-04)
@@ -65,7 +67,7 @@ Phase 8 complete 2026-09-08 (contract, handlers, Node server, `TodoClient`, `Con
 - Reaches for a service/layer where a plain function suffices; declares interfaces with `E = never` that hide domain errors
 - Thinks of error propagation as "handling": needs the short-circuit model (`yield*` on a failure stops the generator)
 - Module dependency direction: put a domain type (`TodoId`) into a service file; domain must not depend on infrastructure
-- Asked for SOLUTION MODE twice in a row (tests, refactor) - next tasks must be done unaided to confirm 3/5 levels
+- Asked for SOLUTION MODE twice in a row (tests, refactor) - next tasks must be done unaided to confirm 3/5 levels; again on 2026-09-10 for "clear completed" after starting two designs at once (client `forEach` + server `removeAll`)
 - Side effect (`crypto.randomUUID()`) moved from `Effect.sync` into an `Effect.map` callback — convention issue to discuss
 - Skips design questions when not tied to a task (ReadonlyArray asymmetry asked 3 times)
 - Leaves unused imports after experiments (`Layer` twice, `Exit`, `TodoItem`); reports "done" without running `pnpm check` - agreed 2026-09-06 that "done" implies a green check
@@ -77,7 +79,13 @@ Phase 8 complete 2026-09-08 (contract, handlers, Node server, `TodoClient`, `Con
 - See `learning/mistakes.md`
 
 ## Last Completed Milestone
-2026-09-08 — Phase 8 steps 7–8: retry only on `TransportError` (`HttpClient.retry` + `while`), per-request `Effect.timeout` via `HttpApiClient.makeWith`; tests with a flaky and a slow `HttpClient` wrapper (`it.live` / `TestClock`); idempotency of the five operations reasoned by the student; `pnpm check` green, 36 tests
+2026-09-10 — Phase 9 step 3 (SOLUTION MODE): "Clear completed" via `Effect.forEach` with `concurrency: 3`, verified on Slow 3G (3 in flight, one final `GET`); `pnpm check` green, 36 tests; not committed
+
+Previous: 2026-09-09 — Phase 9 step 2: optimistic `remove` written independently (reducer filters, no key on the inner fn), verified on 3G and with the server down; `pnpm check` green, 36 tests; not committed
+
+Previous: 2026-09-09 — Phase 9 step 1: optimistic toggle via `Atom.optimistic` + `Atom.optimisticFn`, derived atoms read the mirror, double `GET` removed; verified on 3G and rollback with the server stopped; `pnpm check` green, 36 tests; not committed
+
+Previous: 2026-09-08 — Phase 8 steps 7–8: retry only on `TransportError` (`HttpClient.retry` + `while`), per-request `Effect.timeout` via `HttpApiClient.makeWith`; tests with a flaky and a slow `HttpClient` wrapper (`it.live` / `TestClock`); idempotency of the five operations reasoned by the student; `pnpm check` green, 36 tests
 
 Previous: 2026-09-08 — Phase 8 steps 4–6: `TodoClient` over `HttpApiClient` with transport errors as defects, base URL via `Config`, browser wired through `FetchHttpClient` + `import.meta.env`, CORS on the server, server-only modules under `src/server/todo`; verified in Chrome; `pnpm check` green, 33 tests; commit 5e594c4
 

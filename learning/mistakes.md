@@ -47,5 +47,6 @@ Add recurring mistakes below this line.
 - Pattern 2026-09-07: three "готово" in a row on Phase 7 step 2 without running `pnpm check`; each round the mentor found the next unused import. The agreement "done = green check" is not being applied.
 - Pattern 2026-09-08: `HttpApi` in `todoClient.ts` survived two "готово" reports on Phase 8 step 4; the same `tsc` line both times. Mentor removed it during the requested refactor.
 - 2026-09-08, same file, same day: `flow` left over after switching from `flow(...)` to `.pipe(...)`, reported "готово, проверь" with `pnpm check` red on that one line.
+- Pattern 2026-09-09 (Phase 9 step 1): three "готово"/"check зелёный" reports in a row with `pnpm check` red on disk each time: `Todo` in `todoStore.ts` twice (once with `filter.ts` untouched and the hook rewired instead), then `todosAtom` in `filter.ts` after the switch to `optimisticAtom`. The mentor now runs `pnpm check` on every report before reading the diff.
 - Why it happens: an import is added while trying an API, the code path is deleted, the import line stays; the editor shows no red because the language service diagnostic sits below the fold.
 - Fix: run `pnpm typecheck` before reporting "done"; read the first `tsc` error, not the editor's top-most one.
