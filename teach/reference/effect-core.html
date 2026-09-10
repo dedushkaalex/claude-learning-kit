@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник — ядро Effect v4: значение, ошибки, Schema, сервисы, тесты</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<main>
+  <h1>Ядро Effect v4: фазы 1–5 на одной странице</h1>
+  <p class="lede">Проверено на <code>effect@4.0.0-rc.112</code> и коде проекта по состоянию на 10.09.2026. Каждый фрагмент взят из <code>src/</code> или сокращён из него. Термины: <a href="glossary.html">глоссарий</a>.</p>
+
+  <h2>Как читать тип <code>Effect&lt;A, E, R&gt;</code></h2>
+  <table>
+    <tr><th>Позиция</th><th>Вопрос, на который отвечает</th><th>Пример из проекта</th></tr>
+    <tr><td><code>A</code></td><td>Что вернётся при успехе</td><td><code>findTodo</code>: <code>Todo</code></td></tr>
+    <tr><td><code>E</code></td><td>Какие ошибки вызывающий код может обработать</td><td><code>findTodo</code>: <code>TodoNotFound</code></td></tr>
+    <tr><td><code>R</code></td><td>Какие сервисы нужны до запуска</td><td><code>newTodo</code>: <code>TodoIdGenerator</code></td></tr>
+  </table>
+  <p>Правило чтения ошибки компилятора: первая ошибка в выводе <code>tsc</code>, первые три строки. Если в типе значения стоит <code>=&gt;</code>, функция не вызвана. Если <code>R = unknown</code>, под <code>yield*</code> стоит не эффект.</p>
+
+  <h2>Три способа собрать эффект</h2>
+<pre><code>// 1. Генератор: нужны промежуточные значения
+export const newTodo = Effect.fn("newTodo")(function* (title: string) {
+  const idGenerator = yield* TodoIdGenerator        // R += TodoIdGenerator
+  const id = yield* idGenerator.next                // A этого эффекта
+  const createdAt = yield* DateTime.nowAsDate       // Clock имеет default, R не растёт
+  const validTitle = yield* validateTitle(title)    // E += EmptyTitle | TitleTooLong
+  return { id, completed: false, title: validTitle, createdAt }
+})
+
+// 2. pipe: каждый шаг видит только предыдущий результат
+const validateTitle = (title: string) =>
+  Schema.decodeEffect(Title)(title).pipe(
+    Effect.mapError(() => title.trim().length === 0 ? new EmptyTitle() : new TitleTooLong({ max: 100 })),
+  )
+
+// 3. flatMap: следующий шаг сам возвращает эффект
+Effect.flatMap(TodoClient, (client) => client.todos())</code></pre>
+  <table>
+    <tr><th>Операция</th><th>Callback возвращает</th><th>Действует на</th></tr>
+    <tr><td><code>Effect.map</code></td><td>обычное значение</td><td><code>A</code></td></tr>
+    <tr><td><code>Effect.flatMap</code></td><td><code>Effect</code></td><td><code>A</code>, <code>E</code> и <code>R</code> складываются</td></tr>
+    <tr><td><code>Effect.tap</code></td><td><code>Effect</code>, результат отбрасывается</td><td>ничего, побочное действие</td></tr>
+    <tr><td><code>Effect.mapError</code></td><td>обычное значение ошибки</td><td><code>E</code></td></tr>
+    <tr><td><code>Effect.catchTag</code></td><td><code>Effect</code> с заменой</td><td>убирает один тег из <code>E</code></td></tr>
+    <tr><td><code>Effect.orDie</code></td><td>—</td><td><code>E</code> становится <code>never</code></td></tr>
+    <tr><td><code>Effect.flip</code></td><td>—</td><td>меняет <code>A</code> и <code>E</code> местами</td></tr>
+    <tr><td><code>Effect.provide</code></td><td>—</td><td>убирает <code>Out</code> слоя из <code>R</code></td></tr>
+  </table>
+
+  <h2>Куда ставить побочное действие</h2>
+  <table>
+    <tr><th>Так</th><th>Не так</th><th>Почему</th></tr>
+    <tr><td><code>Effect.sync(() =&gt; crypto.randomUUID())</code></td><td><code>Effect.succeed(crypto.randomUUID())</code></td><td><code>succeed</code> вычислит аргумент один раз при создании эффекта</td></tr>
+    <tr><td><code>yield* Effect.sync(() =&gt; new Date())</code></td><td><code>Effect.map(() =&gt; new Date())</code> в цепочке без причины</td><td>действие должно быть видно как отдельный шаг</td></tr>
+    <tr><td><code>if (bad) return yield* new EmptyTitle()</code></td><td><code>Effect.sync(() =&gt; Effect.fail(new EmptyTitle()))</code></td><td>эффект из callback функции <code>sync</code> попадает в <code>A</code> как данные</td></tr>
+  </table>
+
+  <h2>Ошибки: ожидаемая или дефект</h2>
+  <p>Вопрос для выбора: есть ли у вызывающего кода осмысленное действие при этой ошибке. Если да, ошибка идёт в <code>E</code>. Если нет, это дефект.</p>
+  <table>
+    <tr><th>Ситуация</th><th>Решение</th><th>В проекте</th></tr>
+    <tr><td>Пользователь ввёл пустой заголовок</td><td><code>E</code>: <code>EmptyTitle</code></td><td>форма показывает сообщение</td></tr>
+    <tr><td>Todo с таким id нет</td><td><code>E</code>: <code>TodoNotFound</code></td><td>сервер отвечает 404</td></tr>
+    <tr><td>Сохранённый JSON испорчен при чтении</td><td><code>catchTag("SchemaError")</code> → пустой список + предупреждение</td><td><code>layerKeyValueStore.all</code></td></tr>
+    <tr><td>Кодирование при записи не прошло</td><td><code>orDie</code></td><td><code>layerKeyValueStore.save</code></td></tr>
+    <tr><td>Сеть недоступна, ответ не разобрался, таймаут</td><td><code>Effect.die</code> через <code>catchTag</code></td><td><code>transportAsDefect</code> в <code>todoClient.ts</code></td></tr>
+  </table>
+<pre><code>export class TodoNotFound extends Schema.TaggedError&lt;TodoNotFound&gt;()("TodoNotFound", {
+  id: TodoId,
+}) {}
+
+// в генераторе
+if (todo === undefined) return yield* new TodoNotFound({ id })
+
+// в тесте
+const error = yield* Effect.flip(findTodo([], id))
+expect(error).toBeInstanceOf(TodoNotFound)</code></pre>
+
+  <h2><code>Schema</code>: одна схема, два типа</h2>
+<pre><code>export const TodoId = Schema.String.pipe(Schema.brand("TodoId"))
+export const Title = Schema.Trim.check(Schema.isNonEmpty(), Schema.isMaxLength(100))
+export const Todo = Schema.Struct({
+  id: TodoId,
+  completed: Schema.Boolean,
+  title: Title,
+  createdAt: Schema.DateFromString,   // Type = Date, Encoded = string
+})
+export type Todo = typeof Todo.Type</code></pre>
+  <table>
+    <tr><th>Нужно</th><th>Функция</th><th>Результат</th></tr>
+    <tr><td>Проверить строку и обрезать пробелы</td><td><code>Schema.decodeEffect(Title)(input)</code></td><td><code>Effect&lt;string, SchemaError&gt;</code></td></tr>
+    <tr><td>Разобрать <code>unknown</code> из хранилища</td><td><code>Schema.decodeUnknownEffect(Schema.Array(Todo))(json)</code></td><td><code>Effect&lt;ReadonlyArray&lt;Todo&gt;, SchemaError&gt;</code></td></tr>
+    <tr><td>Подготовить к записи в JSON</td><td><code>Schema.encodeSync(Todo)(todo)</code></td><td><code>createdAt</code> становится строкой</td></tr>
+    <tr><td>Поставить бренд на значение, которое уже верное</td><td><code>TodoId.make(uuid)</code></td><td>бросает исключение при нарушении</td></tr>
+  </table>
+  <p>Домен работает только с <code>Type</code>. Кодирует и декодирует репозиторий на границе с хранилищем, а на границе с сетью это делает <code>HttpApi</code> по контракту.</p>
+
+  <h2>Сервисы и слои</h2>
+<pre><code>export class TodoIdGenerator extends Context.Service&lt;
+  TodoIdGenerator,
+  { readonly next: Effect.Effect&lt;TodoId&gt; }
+&gt;()("app/TodoIdGenerator") {
+  static readonly layer = Layer.succeed(TodoIdGenerator, {
+    next: Effect.sync(() =&gt; TodoId.make(crypto.randomUUID())),
+  })
+
+  static readonly layerTest = Layer.effect(
+    TodoIdGenerator,
+    Effect.gen(function* () {
+      const counter = yield* Ref.make(0)               // одна ячейка на один экземпляр слоя
+      return { next: Ref.getAndUpdate(counter, (x) =&gt; x + 1).pipe(Effect.map((n) =&gt; TodoId.make(`todo-${n}`))) }
+    }),
+  )
+}</code></pre>
+  <table>
+    <tr><th>Задача</th><th>Инструмент</th></tr>
+    <tr><td>Получить реализацию внутри эффекта</td><td><code>const gen = yield* TodoIdGenerator</code>; ключ попадает в <code>R</code></td></tr>
+    <tr><td>Готовый объект без состояния</td><td><code>Layer.succeed(Key, impl)</code></td></tr>
+    <tr><td>Реализация с состоянием или зависимостями</td><td><code>Layer.effect(Key, Effect.gen(...))</code>; зависимости слоя видны в <code>In</code></td></tr>
+    <tr><td>Закрыть <code>R</code> эффекта</td><td><code>Effect.provide(effect, layer)</code></td></tr>
+    <tr><td>Закрыть <code>In</code> слоя</td><td><code>outer.pipe(Layer.provide(inner))</code>; наружу только <code>Out</code> внешнего</td></tr>
+    <tr><td>Закрыть <code>In</code> и оставить внутренний видимым</td><td><code>Layer.provideMerge</code></td></tr>
+    <tr><td>Два независимых слоя</td><td><code>Layer.merge(a, b)</code></td></tr>
+    <tr><td>Собрать слой заново, а не взять из памяти</td><td><code>Layer.fresh(layer)</code></td></tr>
+    <tr><td>Сервис с реализацией по умолчанию</td><td><code>Context.Reference</code>; так устроены <code>Clock</code>, <code>ConfigProvider</code></td></tr>
+  </table>
+  <p>Правило размещения: домен (<code>types.ts</code>, <code>todoRules.ts</code>) не импортирует из сервисов. Конкретный слой подаётся в точке сборки (<code>todoRuntime.ts</code>, <code>main.ts</code>), а не внутри модуля, который им пользуется.</p>
+
+  <h2>Обобщённый helper для use case</h2>
+<pre><code>const updateTodos = Effect.fn("updateTodos")(function* &lt;E, R&gt;(
+  step: (todos: ReadonlyArray&lt;Todo&gt;) =&gt; Effect.Effect&lt;ReadonlyArray&lt;Todo&gt;, E, R&gt;,
+) {
+  const todoRepository = yield* TodoRepository
+  const todos = yield* todoRepository.all
+  const next = yield* step(todos)
+  yield* todoRepository.save(next)
+  return next
+})</code></pre>
+  <p>Без параметров <code>E</code> и <code>R</code> каждый вызывающий получил бы объединение всех ошибок, и <code>catchTag</code> перестал бы сужать тип.</p>
+
+  <h2>Тесты с <code>@effect/vitest</code></h2>
+<pre><code>layer(Layer.merge(TodoRepository.layerMemory, TodoIdGenerator.layerTest))("todoService", (it) =&gt; {
+  it.effect("creates a todo with the next id", () =&gt;
+    Effect.gen(function* () {
+      const todo = yield* createTodo("buy milk")
+      expect(todo.id).toBe("todo-0")
+    }),
+  )
+})</code></pre>
+  <table>
+    <tr><th>Что проверяется</th><th>Как</th></tr>
+    <tr><td>Успех</td><td><code>it.effect</code>, <code>yield*</code>, <code>expect</code> по значению</td></tr>
+    <tr><td>Ожидаемая ошибка</td><td><code>yield* Effect.flip(effect)</code>, <code>toBeInstanceOf</code></td></tr>
+    <tr><td>Дефект</td><td><code>Effect.exit</code>, <code>Exit.isFailure</code>, <code>Cause.hasDies</code></td></tr>
+    <tr><td>Время</td><td><code>it.effect</code> + <code>TestClock.setTime</code> или <code>TestClock.adjust</code></td></tr>
+    <tr><td>Retry по настоящему расписанию</td><td><code>it.live</code></td></tr>
+    <tr><td>Таймаут</td><td><code>Effect.forkChild</code>, <code>TestClock.adjust("5 seconds")</code>, <code>Fiber.join</code></td></tr>
+    <tr><td>Общий слой на блок</td><td><code>layer(l)("name", (it) =&gt; {...})</code>; <code>Ref</code> внутри общий на блок</td></tr>
+  </table>
+
+  <h2>Самопроверка перед словом «готово»</h2>
+  <ol>
+    <li>Выполнить <code>pnpm check</code>.</li>
+    <li>Прочитать первую ошибку из вывода <code>tsc</code>, а не верхнюю в редакторе.</li>
+    <li>Убрать неиспользуемые импорты (TS6133).</li>
+    <li>Назвать вслух <code>A</code>, <code>E</code>, <code>R</code> новой функции.</li>
+  </ol>
+
+  <h2>Первоисточник</h2>
+  <p>Установленные типы: <a href="../../node_modules/effect/dist/Effect.d.ts">Effect.d.ts</a>, <a href="../../node_modules/effect/dist/Schema.d.ts">Schema.d.ts</a>, <a href="../../node_modules/effect/dist/Layer.d.ts">Layer.d.ts</a>. Документация на effect.website описывает v3, для v4 первоисточник — файлы <code>.d.ts</code> в <code>node_modules/effect/dist</code>.</p>
+
+  <footer class="lesson-footer">
+    <p>Справочники: <a href="glossary.html">глоссарий</a>, <a href="atoms-react.html">атомы и React</a>, <a href="atom-lifetime.html">жизненный цикл атома</a>, <a href="httpapi-server.html">HttpApi-сервер</a>. Урок: <a href="../lessons/0003-review-phases-1-9.html">3. Повторение фаз 1–9</a>.</p>
+  </footer>
+</main>
+</body>
+</html>

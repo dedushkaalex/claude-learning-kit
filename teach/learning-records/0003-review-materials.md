@@ -1,0 +1,9 @@
+# Review materials for Phases 1–9 exist; the glossary is now the vocabulary contract
+
+On 2026-09-10 Alex asked for study materials covering everything already passed (Phases 1–9) plus a glossary of hard terms. Four documents were created: `reference/glossary.html` (about ninety terms grouped by topic, each tied to a file in `src/`), `reference/effect-core.html` (Phases 1–5: `Effect`, errors, `Schema`, services, tests), `reference/atoms-react.html` (Phases 6, 7, 9: atoms, hooks, optimistic updates, resources, `forEach`), and lesson `0003-review-phases-1-9.html` (fourteen interleaved recall cards with self-grading stored in `localStorage`, an eight-question quiz, three predict-then-verify checks against the repository). A new component `assets/recall.js` renders the cards.
+
+**Evidence:** `learning/progress.md` and `learning/concepts.md` as of 2026-09-10 (Phase 9 step 3 done); code in `src/server/todo/`, `src/entities/todo/`, `src/features/todos/`.
+
+**Decisions:** the glossary uses one Russian rendering per term and keeps English names in code font; every later lesson must reuse those renderings (ожидаемая ошибка / дефект, ключ сервиса / реализация, оптимистичная копия (mirror), точка сборки, отложенное удаление). The recall cards target the weak spots recorded in `learning/progress.md`: key vs implementation, short-circuit, `E = never` assumptions on reads, deferred removal, retry only on `TransportError`, mirror vs source.
+
+**Implications:** the review lesson has a spacing plan (all cards today, failed cards in two days, all cards in a week). The numbers Alex reports back (failed cards, second-attempt quiz answers, mismatched predictions) decide the next contrast exercise. Concepts still at 2/5 in `learning/progress.md` (`Config`, `it.live`/`TestClock`, `Effect.forEach`, `HttpApi` contract, `Exit`/`Cause`) are candidates for the next teaching lessons, not for review.

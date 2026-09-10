@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Глоссарий — термины курса Effect v4 + React</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<main>
+  <h1>Глоссарий курса: термины из фаз 1–9</h1>
+  <p class="lede">Каждый термин привязан к файлу проекта, где он виден. Английские названия остаются английскими. Если два термина часто путаются, рядом стоит строка «Не путать с».</p>
+
+  <aside class="note">Как читать: сначала найди термин в разделе по теме, потом открой указанный файл и найди в нём строку из примера. Если определение не сходится с кодом, спроси наставника в сессии.</aside>
+
+  <nav class="toc">
+    <a href="#effect">Значение <code>Effect</code></a>
+    <a href="#errors">Ошибки</a>
+    <a href="#schema"><code>Schema</code></a>
+    <a href="#services">Сервисы и слои</a>
+    <a href="#testing">Тесты</a>
+    <a href="#atoms">Атомы и React</a>
+    <a href="#lifetime">Ресурсы и время жизни</a>
+    <a href="#persistence">Хранение</a>
+    <a href="#http">HTTP</a>
+    <a href="#concurrency">Параллельность</a>
+    <a href="#architecture">Архитектура проекта</a>
+  </nav>
+
+  <h2 id="effect">Значение <code>Effect</code> и способы его собирать</h2>
+  <dl class="glossary">
+    <dt><code>Effect&lt;A, E, R&gt;</code></dt>
+    <dd>Описание вычисления, которое ещё не запущено. <code>A</code> — тип успешного результата, <code>E</code> — тип ожидаемой ошибки, <code>R</code> — сервисы, которые нужны перед запуском. Само значение ничего не делает, пока его не запустит runtime.
+      <span class="where">В проекте: <code>src/server/todo/todoRules.ts</code>, <code>findTodo</code> имеет тип <code>Effect&lt;Todo, TodoNotFound, never&gt;</code>.</span>
+      <span class="contrast">Не путать с: <code>Promise</code>. <code>Promise</code> запускается в момент создания, ошибки в его типе не видны.</span></dd>
+
+    <dt>Ленивое значение (lazy value)</dt>
+    <dd>Значение, которое описывает работу, но не выполняет её. Один и тот же <code>Effect</code> можно запустить дважды, и работа выполнится дважды.
+      <span class="where">В проекте: <code>TodoIdGenerator.layer</code> в <code>todoIdGenerator.ts</code>. Поле <code>next</code> — один объект <code>Effect.sync(...)</code>, но каждый <code>yield* idGenerator.next</code> даёт новый id.</span></dd>
+
+    <dt>Runtime (среда выполнения)</dt>
+    <dd>То, что запускает <code>Effect</code> и отдаёт результат наружу. В тестах это <code>it.effect</code>, в приложении <code>Atom.runtime</code>, в скрипте <code>Effect.runPromise</code> или <code>NodeRuntime.runMain</code>.
+      <span class="where">В проекте: <code>src/entities/todo/todoRuntime.ts</code>, <code>src/server/main.ts</code>.</span></dd>
+
+    <dt>Канал (channel) <code>A</code>, <code>E</code>, <code>R</code></dt>
+    <dd>Три позиции в типе <code>Effect</code>. Операции делятся по каналу, на который действуют: <code>Effect.map</code> меняет <code>A</code>, <code>Effect.mapError</code> меняет <code>E</code>, <code>Effect.provide</code> убирает из <code>R</code>.</dd>
+
+    <dt><code>Effect.gen</code> и <code>yield*</code></dt>
+    <dd>Генератор, в котором <code>yield*</code> перед эффектом достаёт его <code>A</code>, а <code>E</code> и <code>R</code> этого эффекта добавляются в тип всего генератора. Если эффект под <code>yield*</code> завершился ошибкой, генератор останавливается на этой строке.
+      <span class="where">В проекте: <code>newTodo</code> в <code>todoRules.ts</code>, четыре <code>yield*</code> подряд.</span></dd>
+
+    <dt><code>Effect.fn</code></dt>
+    <dd>Обёртка над генератором с параметрами. Даёт функцию, которая возвращает <code>Effect</code>, и присваивает вызову имя для трассировки.
+      <span class="where">В проекте: <code>Effect.fn("addTodo")(function* (todos, title) { ... })</code> в <code>todoRules.ts</code>.</span>
+      <span class="contrast">Ошибка из <code>learning/mistakes.md</code>: <code>(title) =&gt; Effect.fn(...)(function* () {})</code> возвращает функцию, а не эффект. Параметры ставятся на генератор.</span></dd>
+
+    <dt>Span</dt>
+    <dd>Именованный отрезок трассировки. Имя, переданное в <code>Effect.fn("createTodo")</code>, попадает в трассу каждого вызова. Скопированное имя из другого use case даёт неверную трассу.</dd>
+
+    <dt><code>pipe</code></dt>
+    <dd>Передача значения через цепочку функций слева направо: <code>a.pipe(f, g)</code> равно <code>g(f(a))</code>. У каждого шага виден только результат предыдущего.
+      <span class="where">В проекте: <code>validateTitle</code> в <code>todoRules.ts</code>.</span></dd>
+
+    <dt><code>Effect.map</code> / <code>Effect.flatMap</code> / <code>Effect.tap</code></dt>
+    <dd><code>map</code>: callback возвращает обычное значение, оно становится новым <code>A</code>. <code>flatMap</code>: callback возвращает <code>Effect</code>, он выполняется следующим. <code>tap</code>: callback выполняется ради побочного действия, <code>A</code> не меняется.
+      <span class="where">В проекте: <code>Effect.flatMap(TodoClient, (client) =&gt; client.todos())</code> в <code>todoStore.ts</code>.</span>
+      <span class="contrast">Ошибка из <code>learning/mistakes.md</code>: <code>Effect</code>, возвращённый из callback функции <code>map</code> или <code>sync</code>, не выполняется, а попадает в <code>A</code> как данные.</span></dd>
+
+    <dt><code>Effect.sync</code> / <code>Effect.succeed</code></dt>
+    <dd><code>succeed(value)</code> оборачивает готовое значение. <code>sync(() =&gt; value)</code> откладывает вычисление до запуска. Побочное действие (<code>crypto.randomUUID()</code>, <code>new Date()</code>) ставится в <code>sync</code>, иначе оно выполнится один раз при создании эффекта.
+      <span class="where">В проекте: <code>Effect.sync(() =&gt; TodoId.make(crypto.randomUUID()))</code> в <code>todoIdGenerator.ts</code>.</span></dd>
+
+    <dt>Short-circuit (остановка на первой ошибке)</dt>
+    <dd>Поведение генератора: <code>yield*</code> на упавшем эффекте прекращает выполнение всех следующих строк, и весь эффект завершается той же ошибкой. Ошибка не «обрабатывается внутри», она передаётся наверх.
+      <span class="where">В проекте: в <code>renameTodo</code> из <code>todoRules.ts</code> после <code>yield* findTodo(todos, id)</code> с ошибкой <code>TodoNotFound</code> строка с <code>validateTitle</code> не выполняется.</span></dd>
+
+    <dt>Fiber</dt>
+    <dd>Единица выполнения одного запущенного эффекта. Fiber можно прервать (interrupt) и дождаться (join). <code>runtime.fn</code> прерывает предыдущий fiber того же атома, если атом записан повторно.</dd>
+  </dl>
+
+  <h2 id="errors">Ошибки: ожидаемые и дефекты</h2>
+  <dl class="glossary">
+    <dt>Ожидаемая ошибка (expected error)</dt>
+    <dd>Исход, который вызывающий код может обработать. Записывается в канал <code>E</code>. Критерий: есть ли у вызывающего кода осмысленное действие при этой ошибке.
+      <span class="where">В проекте: <code>EmptyTitle</code>, <code>TitleTooLong</code>, <code>TodoNotFound</code> в <code>src/entities/todo/types.ts</code>.</span></dd>
+
+    <dt>Дефект (defect)</dt>
+    <dd>Сбой, который вызывающий код обработать не может: ошибка программиста или отказ инфраструктуры без плана восстановления. В канале <code>E</code> не виден. Создаётся через <code>Effect.die</code> или <code>Effect.orDie</code>.
+      <span class="where">В проекте: <code>transportAsDefect</code> в <code>todoClient.ts</code> превращает <code>HttpClientError</code>, <code>SchemaError</code>, <code>TimeoutError</code> в дефекты.</span></dd>
+
+    <dt><code>Schema.TaggedError</code></dt>
+    <dd>Класс ошибки с полем <code>_tag</code> и типизированными полями. Экземпляр можно поставить под <code>yield*</code>, и он попадёт в <code>E</code>. Тот же класс кодируется в JSON и восстанавливается на клиенте.
+      <span class="where">В проекте: <code>class TodoNotFound extends Schema.TaggedError&lt;TodoNotFound&gt;()("TodoNotFound", { id: TodoId })</code>.</span></dd>
+
+    <dt><code>_tag</code></dt>
+    <dd>Строковое поле, по которому различаются варианты в объединении типов. По нему работают <code>Effect.catchTag</code>, <code>AsyncResult.builder.onErrorTag</code>, <code>Match</code>.</dd>
+
+    <dt><code>Effect.catchTag</code></dt>
+    <dd>Обрабатывает ошибку с указанным <code>_tag</code> и убирает её из <code>E</code>. Остальные ошибки проходят дальше. Callback возвращает <code>Effect</code> с заменой.
+      <span class="where">В проекте: <code>Effect.catchTag("SchemaError", () =&gt; ...)</code> в <code>todoRepository.ts</code>.</span></dd>
+
+    <dt><code>Effect.mapError</code></dt>
+    <dd><code>map</code> для канала <code>E</code>: callback получает ошибку и возвращает новую ошибку как обычное значение.
+      <span class="where">В проекте: <code>validateTitle</code> в <code>todoRules.ts</code> заменяет <code>SchemaError</code> на <code>EmptyTitle</code> или <code>TitleTooLong</code>.</span></dd>
+
+    <dt><code>Effect.flip</code></dt>
+    <dd>Меняет местами <code>A</code> и <code>E</code>. В тесте <code>yield* Effect.flip(effect)</code> даёт ошибку как значение, и её можно проверить через <code>expect</code>.</dd>
+
+    <dt><code>Effect.orDie</code></dt>
+    <dd>Переводит все ошибки из <code>E</code> в дефекты. После него <code>E = never</code>. Применяется там, где восстановление невозможно или бессмысленно.
+      <span class="where">В проекте: <code>save</code> в <code>TodoRepository.layerKeyValueStore</code>.</span></dd>
+
+    <dt><code>Exit</code> и <code>Cause</code></dt>
+    <dd><code>Exit</code> — итог запуска: <code>Success</code> с <code>A</code> или <code>Failure</code> с <code>Cause</code>. <code>Cause</code> хранит, что именно произошло: ожидаемая ошибка (<code>Fail</code>), дефект (<code>Die</code>) или прерывание (<code>Interrupt</code>). <code>Cause.squash</code> достаёт из <code>Cause</code> одно значение ошибки.</dd>
+  </dl>
+
+  <h2 id="schema"><code>Schema</code>: описание данных</h2>
+  <dl class="glossary">
+    <dt><code>Schema</code></dt>
+    <dd>Значение, которое описывает форму данных и умеет проверять, декодировать и кодировать их. Из одной схемы выводится тип TypeScript.
+      <span class="where">В проекте: <code>Todo</code>, <code>Title</code>, <code>TodoId</code> в <code>types.ts</code>.</span></dd>
+
+    <dt><code>Type</code> и <code>Encoded</code></dt>
+    <dd>Две стороны схемы. <code>Type</code> — значение в памяти программы. <code>Encoded</code> — значение после кодирования, то, что уходит в JSON или <code>localStorage</code>.
+      <span class="where">В проекте: <code>Schema.DateFromString</code> в поле <code>createdAt</code>: <code>Type = Date</code>, <code>Encoded = string</code>.</span>
+      <span class="contrast">Не путать с: v3 <code>Schema.Date</code> преобразовывал строку в <code>Date</code>. В v4 <code>Schema.Date</code> описывает <code>Date</code> с обеих сторон.</span></dd>
+
+    <dt>Декодирование (decode) и кодирование (encode)</dt>
+    <dd><code>decode</code>: из <code>Encoded</code> в <code>Type</code> с проверками. <code>encode</code>: обратно. Домен работает только с <code>Type</code>. Кодирует репозиторий на границе с хранилищем или сетью.</dd>
+
+    <dt><code>Schema.decodeEffect</code>, <code>decodeUnknownEffect</code>, <code>decodeSync</code></dt>
+    <dd>Семейство функций декодирования. Часть <code>Unknown</code> в имени означает, что вход имеет тип <code>unknown</code>. Суффикс задаёт обёртку результата: <code>Effect</code>, <code>Sync</code> (исключение при ошибке), <code>Option</code>, <code>Result</code>.
+      <span class="where">В проекте: <code>Schema.decodeEffect(Title)(title)</code> в <code>todoRules.ts</code>.</span></dd>
+
+    <dt><code>Schema.make</code> (метод <code>.make</code>)</dt>
+    <dd>Проверяет значение, уже имеющее тип <code>Type</code>, и возвращает его с брендом. При нарушении бросает исключение, то есть дефект. Не декодирует.
+      <span class="where">В проекте: <code>TodoId.make(crypto.randomUUID())</code> в <code>todoIdGenerator.ts</code>.</span></dd>
+
+    <dt><code>Schema.brand</code> (брендированный тип)</dt>
+    <dd>Добавляет к базовому типу метку, из-за которой обычная <code>string</code> не подходит туда, где ожидается <code>TodoId</code>. Проверка на этапе компиляции, в runtime значение остаётся строкой.
+      <span class="where">В проекте: <code>Schema.String.pipe(Schema.brand("TodoId"))</code>.</span></dd>
+
+    <dt><code>Schema.Trim.check(...)</code></dt>
+    <dd><code>Trim</code> — преобразование, которое обрезает пробелы при декодировании. <code>check</code> добавляет проверки: <code>Schema.isNonEmpty()</code>, <code>Schema.isMaxLength(100)</code>.
+      <span class="where">В проекте: схема <code>Title</code> в <code>types.ts</code>.</span></dd>
+
+    <dt><code>Schema.Struct</code>, <code>Schema.Array</code>, <code>Schema.Union</code>, <code>Schema.Literals</code></dt>
+    <dd>Составные схемы: объект с полями, массив, объединение вариантов, набор строковых литералов.
+      <span class="where">В проекте: <code>Schema.Literals(["all", "active", "completed"])</code> в <code>src/features/todos/model/filter.ts</code>.</span></dd>
+
+    <dt><code>SchemaError</code></dt>
+    <dd>Ошибка декодирования или кодирования. При чтении из хранилища это ожидаемая ошибка (данные могли испортиться). При записи это дефект (кодируется значение, которое программа сама создала).</dd>
+  </dl>
+
+  <h2 id="services">Сервисы и слои: канал <code>R</code></h2>
+  <dl class="glossary">
+    <dt>Сервис (service)</dt>
+    <dd>Именованная зависимость, которую эффект получает из контекста при запуске. Состоит из ключа и реализации.
+      <span class="where">В проекте: <code>TodoRepository</code>, <code>TodoIdGenerator</code>, <code>TodoClient</code>.</span></dd>
+
+    <dt>Ключ сервиса (service key) и реализация</dt>
+    <dd>Ключ — класс, созданный через <code>Context.Service</code>. Реализация — объект нужной формы, который лежит в контексте под этим ключом. <code>yield* TodoRepository</code> возвращает реализацию и добавляет ключ в <code>R</code>.
+      <span class="contrast">Повторяющаяся ошибка из <code>learning/progress.md</code>: обращение к ключу (<code>Clock.Clock</code>, <code>Reactivity</code>) как к самой реализации.</span></dd>
+
+    <dt><code>Context.Service&lt;Self, Shape&gt;()("name")</code></dt>
+    <dd>Создаёт класс-ключ с формой реализации <code>Shape</code>. Слои пишутся вручную, статическими полями класса.
+      <span class="where">В проекте: <code>class TodoIdGenerator extends Context.Service&lt;TodoIdGenerator, { readonly next: Effect.Effect&lt;TodoId&gt; }&gt;()("app/TodoIdGenerator")</code>.</span>
+      <span class="contrast">Не путать с: v3 <code>Effect.Service</code>, у которого был автоматический слой <code>.Default</code>.</span></dd>
+
+    <dt><code>Context.Reference</code> (сервис со значением по умолчанию)</dt>
+    <dd>Ключ, у которого есть <code>defaultValue</code>. Обращение к нему не добавляет ключ в <code>R</code>. Так устроены <code>Clock</code> и <code>ConfigProvider</code>.
+      <span class="where">В проекте: <code>DateTime.nowAsDate</code> в <code>newTodo</code> читает <code>Clock</code>, и <code>R</code> от этого не растёт.</span></dd>
+
+    <dt><code>Layer&lt;Out, E, In&gt;</code></dt>
+    <dd>Рецепт сборки сервисов. <code>Out</code> — что слой даёт, <code>In</code> — что ему нужно для сборки, <code>E</code> — ошибка сборки.
+      <span class="where">В проекте: <code>TodoRepository.layerKeyValueStore</code> имеет <code>In = KeyValueStore</code>.</span></dd>
+
+    <dt><code>Layer.succeed</code> / <code>Layer.effect</code></dt>
+    <dd><code>succeed(Key, impl)</code> кладёт готовый объект. <code>effect(Key, effect)</code> собирает реализацию эффектом: можно создать <code>Ref</code>, прочитать <code>Config</code>, взять другой сервис.
+      <span class="where">В проекте: <code>TodoIdGenerator.layer</code> и <code>TodoIdGenerator.layerTest</code>.</span></dd>
+
+    <dt><code>Effect.provide</code> / <code>Layer.provide</code> / <code>Layer.provideMerge</code></dt>
+    <dd><code>Effect.provide(effect, layer)</code> убирает <code>Out</code> слоя из <code>R</code> эффекта. <code>Layer.provide(outer, inner)</code> закрывает <code>In</code> внешнего слоя внутренним; наружу виден только <code>Out</code> внешнего. <code>Layer.provideMerge</code> делает то же, но наружу виден и <code>Out</code> внутреннего.
+      <span class="where">В проекте: <code>TodoClient.layer.pipe(Layer.provide(FetchHttpClient.layer))</code> в <code>todoRuntime.ts</code>.</span></dd>
+
+    <dt><code>Layer.merge</code></dt>
+    <dd>Складывает два независимых слоя в один: <code>Out</code> объединяются, <code>In</code> объединяются.
+      <span class="where">В проекте: <code>Layer.merge(todoClientLayer, KeyValueStore.layerStorage(...))</code>.</span></dd>
+
+    <dt>Мемоизация слоёв (layer memoization) и <code>Layer.fresh</code></dt>
+    <dd>Внутри одного runtime слой собирается один раз, повторное <code>provide</code> того же значения слоя переиспользует экземпляр. <code>Layer.fresh(layer)</code> заставляет собрать заново.
+      <span class="where">В проекте: тест в <code>src/server/todo/__tests__/todoRepository.test.ts</code>, пара «общий экземпляр» и «<code>Layer.fresh</code>».</span></dd>
+
+    <dt><code>Ref</code></dt>
+    <dd>Изменяемая ячейка. Чтение и запись — эффекты: <code>Ref.make</code>, <code>Ref.get</code>, <code>Ref.set</code>, <code>Ref.getAndUpdate</code>. <code>Ref.make</code> под <code>yield*</code> каждый раз создаёт новую ячейку.
+      <span class="where">В проекте: счётчик в <code>TodoIdGenerator.layerTest</code>, список в <code>TodoRepository.layerMemory</code>.</span></dd>
+
+    <dt><code>Clock</code> и <code>TestClock</code></dt>
+    <dd><code>Clock</code> — сервис времени со значением по умолчанию (системные часы). <code>it.effect</code> подменяет его на <code>TestClock</code>, время стоит на нуле и двигается только через <code>TestClock.adjust</code> или <code>TestClock.setTime</code>.</dd>
+
+    <dt><code>Config</code> и <code>ConfigProvider</code></dt>
+    <dd><code>Config.string("KEY")</code> — эффект чтения настройки через сервис <code>ConfigProvider</code>. По умолчанию провайдер читает переменные окружения. <code>ConfigProvider.layer(ConfigProvider.fromEnvRecord({...}))</code> подменяет источник.
+      <span class="where">В проекте: <code>browserConfig</code> в <code>todoRuntime.ts</code>, <code>Config.string("TODO_API_URL").pipe(Config.withDefault(""))</code> в <code>todoClient.ts</code>.</span></dd>
+
+    <dt>Точка сборки (composition root, «граница runtime»)</dt>
+    <dd>Единственное место, где конкретные слои соединяются с приложением. Модули домена и фич не знают, какой репозиторий или клиент им подали.
+      <span class="where">В проекте: <code>src/entities/todo/todoRuntime.ts</code> для браузера, <code>src/server/main.ts</code> для сервера.</span></dd>
+  </dl>
+
+  <h2 id="testing">Тесты с <code>@effect/vitest</code></h2>
+  <dl class="glossary">
+    <dt><code>it.effect</code></dt>
+    <dd>Тест, тело которого — эффект. Запускается под <code>TestClock</code>. Любое ожидание по времени (<code>Effect.sleep</code>, <code>Schedule</code>, <code>Effect.timeout</code>) стоит, пока тест не вызовет <code>TestClock.adjust</code>.</dd>
+
+    <dt><code>it.live</code></dt>
+    <dd>То же, но с настоящими часами. Используется, когда в тесте есть retry со <code>Schedule</code> и двигать время вручную не нужно.
+      <span class="where">В проекте: тест retry в <code>src/entities/todo/__tests__/todoClient.test.ts</code>.</span></dd>
+
+    <dt><code>layer()</code> и <code>it.layer</code></dt>
+    <dd>Блок тестов с общим слоем. Слой собирается один раз на весь блок, поэтому <code>Ref</code> из <code>Layer.effect</code> общий для всех тестов внутри. Callback блока — обычная функция, а не эффект.</dd>
+
+    <dt><code>Effect.forkChild</code> и <code>Fiber.join</code></dt>
+    <dd>Запуск эффекта в отдельном fiber и ожидание его результата. Нужны в тесте таймаута: запустить вызов, сдвинуть <code>TestClock</code>, дождаться исхода.</dd>
+  </dl>
+
+  <h2 id="atoms">Атомы и React: <code>effect/unstable/reactivity</code>, <code>@effect/atom-react</code></h2>
+  <dl class="glossary">
+    <dt>Атом (atom)</dt>
+    <dd>Ячейка состояния с подписчиками. Компонент читает атом через hook и перерисовывается при изменении значения. Атом объявляется на уровне модуля.
+      <span class="where">В проекте: <code>src/entities/todo/todoStore.ts</code>, <code>src/features/todos/model/filter.ts</code>.</span></dd>
+
+    <dt>Обычный атом: <code>Atom.make(initial)</code></dt>
+    <dd>Хранит значение, доступное на чтение и запись. Аналог глобальной переменной с уведомлением подписчиков.</dd>
+
+    <dt>Производный атом (derived atom): <code>Atom.make((get) =&gt; ...)</code></dt>
+    <dd>Функция от других атомов. Зависимости — всё, что прочитано через <code>get</code>. Пересчитывается при изменении любой из них. Ключи реактивности ему не нужны.
+      <span class="where">В проекте: <code>visibleTodosAtom</code> и <code>activeCountAtom</code> в <code>filter.ts</code>.</span></dd>
+
+    <dt><code>Atom.runtime(layer)</code></dt>
+    <dd>Создаёт runtime для атомов и снабжает эффекты внутри них сервисами из слоя. Объявляется один раз на уровне модуля. Runtime внутри компонента создавался бы заново на каждый рендер.
+      <span class="where">В проекте: <code>export const runtime = Atom.runtime(Layer.merge(...))</code> в <code>todoRuntime.ts</code>.</span></dd>
+
+    <dt><code>runtime.atom(effect)</code></dt>
+    <dd>Атом, значение которого — результат эффекта в виде <code>AsyncResult</code>. Эффект выполняется при первой подписке и заново при инвалидации по ключу реактивности.
+      <span class="where">В проекте: <code>todosAtom</code> в <code>todoStore.ts</code>.</span></dd>
+
+    <dt><code>runtime.fn(fn, options)</code></dt>
+    <dd>Атом-функция: при записи аргумента запускает эффект <code>fn(arg)</code>, результат кладёт в свой <code>AsyncResult</code>. Повторная запись прерывает предыдущий fiber этого же атома.
+      <span class="where">В проекте: <code>createTodoAtom</code>, <code>renameTodoAtom</code>, <code>clearCompletedAtom</code>.</span>
+      <span class="contrast">Форма без аргумента: <code>runtime.fn&lt;void&gt;()(() =&gt; ...)</code>. Запись <code>(_: void) =&gt; ...</code> не даёт того же типа.</span></dd>
+
+    <dt>Ключ реактивности (reactivity key)</dt>
+    <dd>Строка, которой помечается атом-источник (<code>Atom.withReactivity(["todos"])</code>). <code>runtime.fn</code> с <code>reactivityKeys: ["todos"]</code> после успешного выполнения заставляет источники с этим ключом перечитать данные.
+      <span class="contrast">Не путать с: зависимостью производного атома. Ключ обновляет источник, а <code>get</code> распространяет изменение вниз.</span></dd>
+
+    <dt><code>AsyncResult</code></dt>
+    <dd>Состояние асинхронного значения: <code>Initial</code> (ещё не было результата), <code>Success</code>, <code>Failure</code>. Флаг <code>waiting</code> отдельный: <code>Success</code> с <code>waiting: true</code> означает «есть старые данные, идёт перезапрос».</dd>
+
+    <dt><code>AsyncResult.builder</code></dt>
+    <dd>Способ описать разметку для каждого состояния: <code>onInitial</code>, <code>onSuccess</code>, <code>onErrorTag("TodoNotFound", ...)</code>, <code>onDefect</code>. <code>render()</code> бросает исключение, если какая-то ветка не описана; <code>orNull()</code> возвращает <code>null</code>.</dd>
+
+    <dt><code>AsyncResult.map</code></dt>
+    <dd>Применяет функцию к значению внутри <code>Success</code>, остальные состояния пропускает без изменений. Так производный атом фильтрует список, не разворачивая <code>AsyncResult</code> вручную.
+      <span class="where">В проекте: <code>visibleTodosAtom</code>.</span></dd>
+
+    <dt><code>useAtomValue</code> / <code>useAtom</code> / <code>useAtomSet</code></dt>
+    <dd><code>useAtomValue(atom)</code> — только чтение. <code>useAtom(atom)</code> — пара «значение, запись». <code>useAtomSet(atom)</code> — только запись, компонент не перерисовывается при изменении значения.
+      <span class="where">В проекте: <code>useTodoList</code> в <code>src/features/todos/hooks/useTodoList.ts</code>.</span></dd>
+
+    <dt><code>mode: "promise"</code></dt>
+    <dd>Опция для <code>useAtom</code> и <code>useAtomSet</code> с атомом-функцией. Функция записи возвращает <code>Promise</code>: успех со значением, отказ с самой ошибкой (<code>Cause.squash</code>). Нужна, когда обработчик события должен дождаться исхода и изменить локальное состояние React.
+      <span class="where">В проекте: <code>useTodoForm</code> сбрасывает форму только после успешного <code>create</code>.</span></dd>
+
+    <dt><code>Atom.optimistic(source)</code> (оптимистичная копия, mirror)</dt>
+    <dd>Записываемая копия атома-источника. Пока запрос идёт, копия показывает предполагаемый результат. Производные атомы читают копию, иначе UI не увидит предварительное значение.
+      <span class="where">В проекте: <code>optimisticAtom</code> в <code>todoStore.ts</code>, его читают <code>visibleTodosAtom</code> и <code>activeCountAtom</code>.</span></dd>
+
+    <dt><code>Atom.optimisticFn(mirror, { reducer, fn })</code></dt>
+    <dd>Атом-функция с оптимистичным обновлением. <code>reducer(current, input)</code> вычисляет предварительное значение копии. <code>fn</code> — атом <code>runtime.fn</code> с самим запросом. При успехе источник перечитывается, при ошибке копия откатывается к последнему значению источника.
+      <span class="contrast">Внутренний <code>runtime.fn</code> не должен нести <code>reactivityKeys</code> того же источника: будет двойной <code>GET</code>.</span></dd>
+
+    <dt><code>Atom.kvs({ runtime, key, schema, defaultValue })</code></dt>
+    <dd>Атом, значение которого сохраняется в <code>KeyValueStore</code> под ключом <code>key</code> через схему.
+      <span class="where">В проекте: <code>filterAtom</code> в <code>filter.ts</code>.</span></dd>
+
+    <dt>Реестр атомов (registry)</dt>
+    <dd>Объект, который хранит значения атомов, подписки и решает, когда удалить атом без подписчиков. Подробности: справочник <a href="atom-lifetime.html">жизненный цикл атома</a>.</dd>
+
+    <dt><code>StrictMode</code></dt>
+    <dd>Режим React для разработки: каждый эффект компонента выполняется дважды (setup, cleanup, setup). Выявляет отсутствующую очистку. В проекте включён намеренно.</dd>
+  </dl>
+
+  <h2 id="lifetime">Ресурсы и время жизни</h2>
+  <dl class="glossary">
+    <dt><code>Scope</code></dt>
+    <dd>Список финализаторов, которые выполняются при закрытии. <code>runtime.atom</code> создаёт <code>Scope</code> для своего эффекта и закрывает его, когда атом теряет последнего подписчика.</dd>
+
+    <dt>Финализатор (finalizer)</dt>
+    <dd>Эффект, зарегистрированный в <code>Scope</code> для выполнения при закрытии. Например, снятие обработчика события.</dd>
+
+    <dt><code>Effect.acquireRelease(acquire, release)</code></dt>
+    <dd>Выполняет <code>acquire</code> сейчас и регистрирует <code>release</code> в текущем <code>Scope</code>. <code>release</code> обязан возвращать эффект, а не <code>void</code>.
+      <span class="where">В проекте: атом синхронизации вкладок в фазе 7 (подписка на событие <code>storage</code>).</span></dd>
+
+    <dt>Отложенное удаление (deferred removal)</dt>
+    <dd>Реестр не удаляет атом сразу при потере последнего подписчика, а ставит проверку на следующую задачу. Если за это время кто-то подписался снова, ресурс остаётся. Из-за этого под <code>StrictMode</code> подписка выполняется один раз. Подробности: урок <a href="../lessons/0001-deferred-unsubscribe.html">1</a>.</dd>
+
+    <dt><code>Atom.keepAlive</code></dt>
+    <dd>Отключает удаление атома при отсутствии подписчиков. Значение живёт, пока живёт реестр.</dd>
+
+    <dt><code>useAtomMount</code></dt>
+    <dd>Hook, который держит подписку на атом без чтения значения. Нужен, чтобы ресурс внутри атома жил, пока смонтирован компонент.</dd>
+  </dl>
+
+  <h2 id="persistence">Хранение: <code>effect/unstable/persistence</code></h2>
+  <dl class="glossary">
+    <dt><code>KeyValueStore</code></dt>
+    <dd>Сервис с операциями <code>get</code>, <code>set</code>, <code>remove</code> над строками. Форма совпадает с <code>localStorage</code>. Реализации: <code>layerMemory</code>, <code>layerStorage(() =&gt; localStorage)</code>.
+      <span class="where">В проекте: <code>todoRuntime.ts</code>.</span></dd>
+
+    <dt><code>KeyValueStore.toSchemaStore(store, schema)</code></dt>
+    <dd>Обёртка над строковым хранилищем: <code>get</code> возвращает <code>Option&lt;Type&gt;</code>, <code>set</code> принимает <code>Type</code>. Кодирование в JSON выполняется через схему. Ошибка <code>get</code>: <code>KeyValueStoreError | SchemaError</code>.
+      <span class="where">В проекте: <code>TodoRepository.layerKeyValueStore</code>.</span></dd>
+
+    <dt><code>Option</code></dt>
+    <dd>Значение, которого может не быть: <code>Some(value)</code> или <code>None</code>. <code>Option.getOrElse(() =&gt; fallback)</code> разворачивает его. При разворачивании в пустой массив нужен явный тип, иначе выводится <code>never[]</code>.</dd>
+  </dl>
+
+  <h2 id="http">HTTP: <code>effect/unstable/httpapi</code>, <code>effect/unstable/http</code></h2>
+  <dl class="glossary">
+    <dt>Контракт (<code>HttpApi</code>, <code>HttpApiGroup</code>, <code>HttpApiEndpoint</code>)</dt>
+    <dd>Одно значение с описанием всех эндпоинтов: путь, метод, схемы <code>params</code>, <code>payload</code>, <code>success</code>, <code>error</code>. Из него выводятся и обработчики сервера, и методы клиента.
+      <span class="where">В проекте: <code>todoApi</code> в <code>src/entities/todo/todoApi.ts</code>.</span></dd>
+
+    <dt><code>params</code>, <code>payload</code>, <code>success</code>, <code>error</code></dt>
+    <dd>Части эндпоинта. <code>params</code> — параметры пути, запись полей. <code>payload</code> — тело запроса, только схема. <code>success</code> — схема ответа, по умолчанию 204 без тела. <code>error</code> — схема или массив схем объявленных ошибок.</dd>
+
+    <dt><code>HttpApiSchema.status(code)</code></dt>
+    <dd>Аннотация HTTP-статуса на схеме ошибки. Читается с той схемы, что передана в <code>error</code>. Аннотация на членах <code>Schema.Union</code> не учитывается.
+      <span class="where">В проекте: <code>Schema.Union([EmptyTitle, TitleTooLong]).pipe(HttpApiSchema.status(400))</code>.</span></dd>
+
+    <dt><code>HttpApiBuilder.group</code></dt>
+    <dd>Слой с обработчиками одной группы. Компилятор проверяет, что реализованы все имена из контракта и что <code>E</code> обработчика входит в объявленные ошибки.
+      <span class="where">В проекте: <code>src/server/todo/todoHandlers.ts</code>.</span></dd>
+
+    <dt><code>HttpRouter.serve</code></dt>
+    <dd>Превращает зарегистрированные маршруты в HTTP-приложение. Обработчики подаются до <code>serve</code>, сервисы для них после. Подробности: справочник <a href="httpapi-server.html">HttpApi-сервер</a>.</dd>
+
+    <dt><code>HttpApiClient.make</code> / <code>makeWith</code></dt>
+    <dd>Создание клиента из контракта. <code>makeWith</code> принимает подготовленный <code>HttpClient</code> (с retry и timeout) и <code>baseUrl</code>. Методы клиента несут объявленные ошибки плюс <code>HttpClientError | SchemaError</code>.
+      <span class="where">В проекте: <code>make</code> в <code>todoClient.ts</code>.</span></dd>
+
+    <dt><code>HttpClient</code></dt>
+    <dd>Низкоуровневый сервис запросов, аналог <code>fetch</code>. <code>FetchHttpClient.layer</code> даёт реализацию для браузера. <code>HttpClient.retry</code> и <code>HttpClient.transformResponse</code> навешивают политику на все запросы.
+      <span class="contrast">Не путать с: клиентом из <code>HttpApiClient</code>, у которого методы названы по контракту.</span></dd>
+
+    <dt><code>HttpClientError</code> и причина <code>TransportError</code></dt>
+    <dd>Ошибка слоя HTTP. Поле <code>reason._tag</code> различает случаи. <code>TransportError</code> — запрос не дошёл до сервера (сеть, DNS, отказ соединения). Только при нём безопасен повтор: сервер точно ничего не обработал.</dd>
+
+    <dt>Retry и <code>Schedule.exponential</code></dt>
+    <dd>Повтор запроса по расписанию. <code>Schedule.exponential("100 millis")</code> удваивает паузу между попытками. Условие <code>while</code> ограничивает, какие ошибки повторять.
+      <span class="where">В проекте: <code>HttpClient.retry({ while, times: 3, schedule })</code> в <code>todoClient.ts</code>.</span></dd>
+
+    <dt><code>Effect.timeout</code> и <code>TimeoutError</code></dt>
+    <dd>Ограничение времени ожидания. По истечении эффект прерывается и завершается ошибкой <code>TimeoutError</code>. Запрос при этом мог быть уже обработан сервером, поэтому повторять его по таймауту нельзя без идемпотентности.</dd>
+
+    <dt>Идемпотентность (idempotency)</dt>
+    <dd>Свойство операции: повторное выполнение с теми же аргументами даёт то же состояние. <code>toggle</code> с явным <code>completed</code> идемпотентен, <code>create</code> нет.
+      <span class="where">В проекте: эндпоинт <code>toggle</code> принимает <code>payload: { completed }</code> вместо инверсии на сервере.</span></dd>
+
+    <dt>Порт-сервис (<code>TodoClient</code>)</dt>
+    <dd>Сервис с методами в терминах домена (<code>create(title)</code>, <code>toggle(id, completed)</code>), который прячет форму HTTP-запросов и транспортную политику. Атомы зависят от него, а не от <code>HttpApiClient</code>.</dd>
+
+    <dt><code>HttpApiTest.groups</code></dt>
+    <dd>Клиент для теста, который вызывает обработчики напрямую, минуя сокеты, но через те же схемы.</dd>
+
+    <dt><code>OpenApi.fromApi</code></dt>
+    <dd>Описание контракта в формате OpenAPI. В тесте по нему проверяются пути, методы и статусы.</dd>
+
+    <dt>CORS</dt>
+    <dd>Правило браузера: страница с одного origin не получает ответ с другого без разрешающих заголовков от сервера. В проекте сервер добавляет их, потому что Vite и Node-сервер работают на разных портах.</dd>
+  </dl>
+
+  <h2 id="concurrency">Параллельность</h2>
+  <dl class="glossary">
+    <dt><code>Effect.forEach(items, f, { concurrency, discard })</code></dt>
+    <dd>Один эффект над коллекцией. По умолчанию последовательно. <code>concurrency: n</code> держит не больше <code>n</code> дочерних fiber одновременно, <code>"unbounded"</code> запускает все сразу. <code>discard: true</code> возвращает <code>void</code>.
+      <span class="where">В проекте: <code>clearCompletedAtom</code> в <code>todoStore.ts</code>, <code>concurrency: 3</code>.</span></dd>
+
+    <dt>Fail-fast</dt>
+    <dd>Поведение <code>Effect.forEach</code> и <code>Effect.all</code> при ошибке: первая ошибка прерывает остальные запущенные fiber, и весь эффект завершается этой ошибкой.
+      <span class="contrast">Не путать с: <code>Promise.all</code>, который отклоняется, но остальные промисы продолжают выполняться.</span></dd>
+
+    <dt><code>Effect.all</code></dt>
+    <dd>То же для фиксированного набора эффектов (кортеж или объект), результат сохраняет форму.</dd>
+
+    <dt><code>Semaphore</code></dt>
+    <dd>Ограничитель одновременного доступа, который можно разделить между разными вызывающими. Нужен, когда ограничение должно действовать на все вызовы, а не на один <code>forEach</code>.</dd>
+
+    <dt>Race condition (гонка)</dt>
+    <dd>Результат зависит от порядка завершения параллельных операций. В проекте: две вкладки сохраняют весь список целиком, и последняя запись затирает первую.</dd>
+  </dl>
+
+  <h2 id="architecture">Архитектура проекта</h2>
+  <dl class="glossary">
+    <dt>Домен (domain) и инфраструктура (infrastructure)</dt>
+    <dd>Домен — правила и типы задачи (<code>types.ts</code>, <code>todoRules.ts</code>). Инфраструктура — способы хранения, сети, времени (<code>todoRepository.ts</code>, <code>todoClient.ts</code>). Стрелка импорта идёт от инфраструктуры к домену и никогда обратно.</dd>
+
+    <dt>Use case</dt>
+    <dd>Операция уровня приложения: берёт данные из репозитория, применяет правило домена, сохраняет. В проекте это функции <code>createTodo</code>, <code>toggleTodo</code>, <code>renameTodo</code>, <code>removeTodo</code> в <code>src/server/todo/todoService.ts</code>.</dd>
+
+    <dt>Репозиторий (repository)</dt>
+    <dd>Сервис доступа к данным с операциями в терминах домена: <code>all</code>, <code>save</code>. Реализации меняются на границе runtime, вызывающий код не меняется.</dd>
+
+    <dt>Слои папок: <code>entities</code>, <code>features</code>, <code>pages</code>, <code>shared</code>, <code>server</code></dt>
+    <dd><code>entities/todo</code> — типы, контракт, клиент, атомы данных. <code>features/todos</code> — сценарии UI: hooks и компоненты. <code>pages</code> — сборка страницы. <code>shared/ui</code> — компоненты без знания о todo. <code>server</code> — только серверные модули.</dd>
+
+    <dt>Обобщённый helper (higher-order helper)</dt>
+    <dd>Функция, принимающая шаг <code>(input) =&gt; Effect&lt;A, E, R&gt;</code> и обобщённая по <code>E</code> и <code>R</code>. Без обобщения все вызывающие получают объединение всех ошибок.
+      <span class="where">В проекте: <code>updateTodos</code> в <code>todoService.ts</code>.</span></dd>
+  </dl>
+
+  <footer class="lesson-footer">
+    <p>Справочники: <a href="effect-core.html">ядро Effect</a>, <a href="atoms-react.html">атомы и React</a>, <a href="atom-lifetime.html">жизненный цикл атома</a>, <a href="httpapi-server.html">HttpApi-сервер</a>. Уроки: <a href="../lessons/0003-review-phases-1-9.html">3. Повторение фаз 1–9</a>.</p>
+    <p>Если определение расходится с кодом или не читается вслух, назови термин наставнику в сессии. Глоссарий правится вместе с курсом.</p>
+  </footer>
+</main>
+</body>
+</html>

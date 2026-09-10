@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Урок 3 — Повторение фаз 1–9: вспомнить, предсказать, проверить</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<main>
+  <h1>Повторение фаз 1–9: вспомнить, предсказать, проверить</h1>
+  <p class="lede">Один конкретный результат: после урока ты по любому фрагменту из <code>src/</code> называешь <code>A</code>, <code>E</code>, <code>R</code>, говоришь, что перезапустится в атомах после действия, и объясняешь, почему ошибка попала в <code>E</code>, а не стала дефектом.</p>
+
+  <aside class="note">Связь с проектом: фазы 1–9 из <code>learning/curriculum.md</code>, код в <code>src/server/todo/</code>, <code>src/entities/todo/</code>, <code>src/features/todos/</code>. Новых тем в уроке нет. Термины: <a href="../reference/glossary.html">глоссарий</a>.</aside>
+
+  <h2>1. Как проходить этот урок</h2>
+  <p>Материал уже пройден, поэтому цель другая: удержать его надолго, а не узнать заново. Для этого работает припоминание без подсказки. Порядок такой.</p>
+  <ol>
+    <li>Открой карточку, ответь вслух, потом нажми «Показать ответ». Ответ до раскрытия обязателен, иначе упражнение не работает.</li>
+    <li>Отметь «Вспомнил сам» или «Не вспомнил». Отметки сохраняются в браузере.</li>
+    <li>Через два дня открой урок снова и пройди только карточки с отметкой «Не вспомнил».</li>
+    <li>Через неделю сбрось отметки и пройди все карточки.</li>
+  </ol>
+  <p>Карточки перемешаны по фазам намеренно. Один вопрос по слоям, следующий по атомам, потом по ошибкам. Так проверяется выбор инструмента, а не память на порядок уроков.</p>
+
+  <h2>2. Карточки: ответь до раскрытия</h2>
+  <div class="recall" id="recall3" data-cards='[
+    {"phase":"Фаза 1 · значение Effect",
+     "q":"В <code>TodoIdGenerator.layer</code> поле <code>next</code> объявлено как <code>Effect.sync(() =&gt; TodoId.make(crypto.randomUUID()))</code>. Что изменится, если заменить <code>Effect.sync(() =&gt; ...)</code> на <code>Effect.succeed(crypto.randomUUID())</code>, а потом дважды выполнить <code>yield* idGenerator.next</code>?",
+     "a":"<code>Effect.succeed</code> вычисляет аргумент один раз, в момент создания слоя. Оба <code>yield*</code> вернут один и тот же id. <code>Effect.sync</code> откладывает вызов до запуска, и каждый <code>yield*</code> даёт новый id. Файл: <code>src/server/todo/todoIdGenerator.ts</code>."},
+    {"phase":"Фаза 6 · атомы",
+     "q":"Форма записала строку в <code>createTodoAtom</code>, запрос завершился успешно. Перечисли атомы, которые пересчитаются, и назови один, который не пересчитается.",
+     "a":"Пересчитаются: <code>todosAtom</code> (по ключу <code>todos</code>), затем <code>optimisticAtom</code>, <code>visibleTodosAtom</code>, <code>activeCountAtom</code> (по зависимостям через <code>get</code>). Не пересчитается <code>filterAtom</code>: он ни от кого не зависит и ключа не имеет. Файлы: <code>todoStore.ts</code>, <code>filter.ts</code>."},
+    {"phase":"Фаза 2 · ошибки",
+     "q":"В <code>renameTodo</code> из <code>todoRules.ts</code> первая строка <code>yield* findTodo(todos, id)</code> завершилась ошибкой <code>TodoNotFound</code>. Выполнится ли следующая строка с <code>validateTitle(title)</code>? Какой будет <code>E</code> у <code>renameTodo</code>?",
+     "a":"Не выполнится. Генератор останавливается на первом упавшем <code>yield*</code>, и весь эффект завершается ошибкой <code>TodoNotFound</code>. <code>E</code> у <code>renameTodo</code> при этом остаётся объединением всех возможных ошибок: <code>TodoNotFound | EmptyTitle | TitleTooLong</code>, потому что тип описывает все пути, а не один запуск."},
+    {"phase":"Фаза 8 · HTTP",
+     "q":"В <code>todoClient.ts</code> условие retry: <code>error._tag === \&quot;HttpClientError\&quot; &amp;&amp; error.reason._tag === \&quot;TransportError\&quot;</code>. Почему <code>TimeoutError</code> в это условие не входит?",
+     "a":"При <code>TransportError</code> запрос не дошёл до сервера, повтор безопасен. При таймауте сервер мог уже обработать запрос. Повтор <code>create</code> создаст второй todo. Повторять по таймауту можно только идемпотентные операции, а политика в <code>HttpClient.retry</code> общая для всех методов."},
+    {"phase":"Фаза 4 · сервисы",
+     "q":"Строка <code>const todoRepository = yield* TodoRepository</code> в <code>todoService.ts</code>. Что лежит в <code>todoRepository</code> и что добавилось в <code>R</code> этого эффекта?",
+     "a":"В <code>todoRepository</code> лежит реализация: объект с полями <code>all</code> и <code>save</code>, взятый из контекста. В <code>R</code> добавился ключ <code>TodoRepository</code>. Ключ и реализация — разные вещи: ключ есть на этапе компиляции, реализацию подаёт слой при запуске."},
+    {"phase":"Фаза 9 · оптимистичные обновления",
+     "q":"<code>visibleTodosAtom</code> в <code>filter.ts</code> читает <code>optimisticAtom</code>, а не <code>todosAtom</code>. Что увидит пользователь, если вернуть чтение <code>todosAtom</code>, а <code>toggleTodoAtom</code> оставить как есть?",
+     "a":"Галочка переключится только после ответа сервера. <code>optimisticFn</code> записывает предварительное значение в копию (<code>optimisticAtom</code>), источник <code>todosAtom</code> меняется только после успешного перечитывания. Производный атом должен читать копию в точке вычисления."},
+    {"phase":"Фаза 3 · Schema",
+     "q":"У <code>Schema.DateFromString</code> назови <code>Type</code> и <code>Encoded</code>. Кто в проекте кодирует <code>createdAt</code> в строку: домен, репозиторий или контракт?",
+     "a":"<code>Type = Date</code>, <code>Encoded = string</code>. Домен работает только с <code>Date</code>. Кодирует граница: <code>toSchemaStore</code> в <code>TodoRepository.layerKeyValueStore</code> для хранилища и <code>HttpApi</code> по схеме <code>success: Todo</code> для сети."},
+    {"phase":"Фаза 7 · ресурсы",
+     "q":"В атоме синхронизации вкладок убрали <code>release</code> из <code>Effect.acquireRelease</code>. Что накопится после пяти монтирований списка? И почему под <code>StrictMode</code> <code>acquire</code> выполняется один раз, а не два?",
+     "a":"Накопится пять обработчиков события <code>storage</code>, и каждый будет инвалидировать <code>todos</code>. Под <code>StrictMode</code> реестр не удаляет атом сразу после потери подписчика, а проверяет на следующей задаче. Повторная подписка успевает раньше проверки, ресурс остаётся. Урок 1 и справочник <a href=\"../reference/atom-lifetime.html\">жизненный цикл атома</a>."},
+    {"phase":"Фаза 5 · тесты",
+     "q":"Блок <code>layer(TodoIdGenerator.layerTest)</code> содержит два теста, каждый один раз выполняет <code>yield* idGenerator.next</code>. Какой id получит второй тест и почему?",
+     "a":"<code>todo-1</code>. Слой собирается один раз на блок, <code>Ref</code> со счётчиком общий. Если подать слой через <code>Effect.provide</code> внутри каждого теста, слой соберётся заново и второй тест получит <code>todo-0</code>."},
+    {"phase":"Фаза 8 · контракт",
+     "q":"Где в <code>todoApi.ts</code> стоит <code>HttpApiSchema.status(400)</code> и что случится, если поставить его на <code>EmptyTitle</code> и <code>TitleTooLong</code> по отдельности, а в <code>error</code> передать <code>Schema.Union([...])</code> без аннотации?",
+     "a":"Стоит на объединении: <code>Schema.Union([EmptyTitle, TitleTooLong]).pipe(HttpApiSchema.status(400))</code>. Аннотация читается с той схемы, что передана в <code>error</code>. На членах объединения она не учитывается, и ошибки уйдут с 500."},
+    {"phase":"Фаза 2 · ошибки",
+     "q":"<code>TodoRepository.layerKeyValueStore</code>: при чтении <code>SchemaError</code> перехвачена через <code>catchTag</code>, при записи стоит <code>orDie</code>. Почему одна и та же ошибка обработана по-разному?",
+     "a":"При чтении данные пришли извне и могли испортиться. У вызывающего кода есть действие: начать с пустого списка и записать предупреждение. При записи кодируется значение, которое программа сама создала. Если оно не кодируется, это ошибка программиста, восстановления нет, значит дефект."},
+    {"phase":"Фаза 9 · параллельность",
+     "q":"<code>clearCompletedAtom</code>: пять завершённых todo, <code>concurrency: 3</code>. Второй запрос завершился ошибкой 404. Что с двумя запросами в полёте, с двумя ещё не начатыми и с уже удалёнными на сервере?",
+     "a":"Два запроса в полёте прерываются, два не начатых не запускаются, весь <code>forEach</code> завершается ошибкой <code>TodoNotFound</code>. Уже удалённые на сервере остаются удалёнными. Это частичный отказ. После ошибки источник не перечитывается, потому что ключ реактивности срабатывает только при успехе."},
+    {"phase":"Фаза 4 · сервисы",
+     "q":"<code>DateTime.nowAsDate</code> читает <code>Clock</code>, но <code>R</code> у <code>newTodo</code> содержит только <code>TodoIdGenerator</code>. Почему <code>Clock</code> там нет, и почему <code>TodoIdGenerator</code> не устроен так же?",
+     "a":"<code>Clock</code> объявлен через <code>Context.Reference</code> со значением по умолчанию, системными часами. Обращение к нему не добавляет ключ в <code>R</code>. У генератора id нет единственно верной реализации, и явный <code>R</code> не даёт тестам молча получить случайные id."},
+    {"phase":"Фаза 6 · hooks",
+     "q":"<code>useTodoForm</code> вызывает <code>useAtom(createTodoAtom, { mode: \&quot;promise\&quot; })</code>, а <code>useTodoList</code> вызывает <code>useAtomSet(toggleTodoAtom)</code> без этой опции. Назови причину различия.",
+     "a":"Форме нужно дождаться исхода и сбросить поле только после успеха. Это локальное решение обработчика события. Для <code>toggle</code> исход виден из <code>AsyncResult</code> самого атома, флаг <code>waiting</code> уже есть. Дополнительный <code>Promise</code> не нужен."}
+  ]'></div>
+
+  <h2>3. Выбор без подсказки: восемь вопросов из разных фаз</h2>
+  <div class="quiz" id="quiz3" data-questions='[
+    {"q":"createTodo объявлен как (title) => Effect.fn(\"createTodo\")(function* () { ... }). Что вернёт вызов createTodo(\"milk\")?",
+     "options":["Функцию, которая вернёт эффект","Эффект, который вернёт функцию","Эффект с уже готовым результатом","Функцию с уже готовым результатом"],
+     "answer":0,"why":"Effect.fn(...)(gen) сам возвращает функцию; параметры должны стоять на генераторе."},
+    {"q":"Callback внутри Effect.map вернул Effect.fail(new EmptyTitle()). Куда попадёт эта ошибка?",
+     "options":["Прервёт цепочку до шага map","В канал E, минуя map","В канал A как данные","В Cause как дефект программы"],
+     "answer":2,"why":"map не разворачивает вложенный эффект; для callback с эффектом нужен flatMap."},
+    {"q":"outer.pipe(Layer.provide(inner)). Что видно наружу после этой сборки?",
+     "options":["Только сервисы внутреннего слоя","Только сервисы внешнего слоя","Сервисы обоих слоёв вместе","Никакие сервисы не видны"],
+     "answer":1,"why":"provide закрывает In внешнего слоя; чтобы inner остался виден, нужен provideMerge."},
+    {"q":"Компонент вызывает useAtomSet(toggleTodoAtom). Перерисуется ли он, когда результат атома изменится?",
+     "options":["Да, hook подписан на весь результат","Да, hook подписан на флаг waiting","Нет, hook подписан только на значение","Нет, hook даёт только функцию записи"],
+     "answer":3,"why":"useAtomSet не читает значение; для перерисовки нужен useAtomValue или useAtom."},
+    {"q":"Тест retry в it.effect зависает до таймаута vitest. В чём причина?",
+     "options":["Часы тестовые, и время не идёт","Часы реальные, и пауза слишком долгая","Сервер тестовый, и ответ не приходит","Сервер реальный, и соединение не открыто"],
+     "answer":0,"why":"it.effect подставляет TestClock; Schedule ждёт TestClock.adjust. Выход: it.live или сдвиг часов."},
+    {"q":"Сервер остановлен, пользователь нажал toggle. Что произойдёт с optimisticAtom после ошибки?",
+     "options":["Копия сохранит значение из reducer","Источник примет значение из reducer","Копия откатится к значению источника","Источник откатится к значению копии"],
+     "answer":2,"why":"При ошибке optimisticFn возвращает копии последнее значение источника; источник не трогается."},
+    {"q":"В payload эндпоинта create поставили схему Title вместо Schema.String. Что станет с ошибкой EmptyTitle?",
+     "options":["Придёт как ошибка декодирования","Станет недостижимой для домена","Придёт как ошибка обработчика","Станет ошибкой самого роутера"],
+     "answer":1,"why":"Пустая строка отсекается на декодировании до обработчика; домен её не увидит, тег будет общий."},
+    {"q":"Effect.forEach с concurrency: 3, один из запросов упал. Что с остальными запущенными fiber?",
+     "options":["Остальные fiber будут завершены","Остальные fiber будут повторены","Остальные fiber будут отложены","Остальные fiber будут прерваны"],
+     "answer":3,"why":"forEach работает по принципу fail-fast, в отличие от Promise.all, который даёт остальным доработать."}
+  ]'></div>
+
+  <h2>4. Предскажи, потом проверь в репозитории</h2>
+  <p>Три проверки на настоящем коде. Сначала запиши ответ, потом выполни команду. Расхождение между ответом и выводом важнее совпадения: его нужно назвать наставнику.</p>
+
+  <h3>Проверка 1: тип ошибки до <code>transportAsDefect</code></h3>
+  <p>В <code>src/entities/todo/todoClient.ts</code> метод <code>create</code> собран как <code>client.todo.create({ payload: { title } }).pipe(transportAsDefect)</code>. Запиши, какие теги будут в <code>E</code> у <code>client.todo.create(...)</code> до <code>pipe</code>. Потом временно добавь строку ниже внутри <code>make</code>, выполни <code>pnpm typecheck</code> и прочитай первую ошибку.</p>
+<pre><code>const probe: never = client.todo.create({ payload: { title: "" } })</code></pre>
+  <details class="predict"><summary>Ответ</summary>
+    <p><code>EmptyTitle | TitleTooLong</code> из контракта, плюс <code>HttpClientError</code> и <code>SchemaError</code> от клиента, плюс <code>TimeoutError</code>, потому что <code>makeWith</code> получил <code>HttpClient</code> с <code>Effect.timeout</code>. После <code>transportAsDefect</code> остаются только <code>EmptyTitle | TitleTooLong</code>. Строку с <code>probe</code> удали и снова выполни <code>pnpm typecheck</code>.</p>
+  </details>
+
+  <h3>Проверка 2: сколько запросов уходит после toggle</h3>
+  <p>Запусти сервер и приложение (<code>pnpm dev:server</code>, <code>pnpm dev</code>), открой вкладку Network в Chrome, включи Slow 3G. Запиши, сколько запросов <code>GET /todos</code> уйдёт после одного клика по галочке и в какой момент по отношению к <code>PATCH</code>.</p>
+  <details class="predict"><summary>Ответ</summary>
+    <p>Один <code>GET /todos</code>, после успешного <code>PATCH /todos/:id/toggle</code>. Галочка при этом переключается сразу, до <code>PATCH</code>. Два <code>GET</code> означают, что внутренний <code>runtime.fn</code> получил <code>reactivityKeys</code>.</p>
+  </details>
+
+  <h3>Проверка 3: id расходуется до проверки заголовка</h3>
+  <p>Открой <code>src/server/todo/__tests__/todoService.test.ts</code>, блок <code>layer(testLayer)("createTodo", ...)</code>. В нём три теста: первый создаёт todo и ожидает <code>todo-0</code>, второй вызывает <code>createTodo("   ")</code> и ожидает <code>EmptyTitle</code>, третий вызывает <code>toggleTodo</code> с несуществующим id. Запиши, какой id получит четвёртый тест, если добавить его в конец блока и создать в нём todo с нормальным заголовком. Потом добавь такой тест временно, выполни <code>pnpm test</code>, прочитай id из сообщения об ошибке или из <code>expect</code>, и удали тест.</p>
+  <details class="predict"><summary>Ответ</summary>
+    <p><code>todo-2</code>. Слой общий на блок, счётчик один. Второй тест тоже расходует id: в <code>newTodo</code> строка <code>yield* idGenerator.next</code> стоит раньше <code>validateTitle(title)</code>, и генератор доходит до ошибки уже после получения <code>todo-1</code>. Третий тест id не расходует: <code>toggleTodo</code> не вызывает <code>newTodo</code>. Ответ <code>todo-1</code> означает, что порядок <code>yield*</code> в <code>newTodo</code> не учтён.</p>
+  </details>
+
+  <h2>5. Что сказать наставнику после урока</h2>
+  <ol>
+    <li>Номера карточек с отметкой «Не вспомнил».</li>
+    <li>Номера вопросов раздела 3, на которые ответ был со второй попытки.</li>
+    <li>Проверка из раздела 4, где предсказание разошлось с выводом, и в чём.</li>
+  </ol>
+  <p>По этому списку наставник подберёт контрастное упражнение на два похожих понятия, которые смешались.</p>
+
+  <h2>Первоисточник</h2>
+  <p>Для проверки любого ответа: установленные типы <a href="../../node_modules/effect/dist/Effect.d.ts">Effect.d.ts</a>, <a href="../../node_modules/effect/dist/Layer.d.ts">Layer.d.ts</a>, <a href="../../node_modules/effect/dist/unstable/reactivity/Atom.d.ts">Atom.d.ts</a> и код проекта в <code>src/</code>. Сводки: <a href="../reference/effect-core.html">ядро Effect</a>, <a href="../reference/atoms-react.html">атомы и React</a>.</p>
+
+  <footer class="lesson-footer">
+    <p>Справочники: <a href="../reference/glossary.html">глоссарий</a>, <a href="../reference/effect-core.html">ядро Effect</a>, <a href="../reference/atoms-react.html">атомы и React</a>. Предыдущие уроки: <a href="0001-deferred-unsubscribe.html">1. Почему реестр ждёт одну задачу</a>, <a href="0002-httpapi-server.html">2. Сервер из контракта</a>. Материалы курса: <a href="../MISSION.md">миссия</a>, <a href="../RESOURCES.md">источники</a>.</p>
+    <p>Что-то неясно? Назови наставнику в сессии номер карточки или вопроса. Он разберёт то же понятие на другом фрагменте кода.</p>
+  </footer>
+</main>
+<script src="../assets/recall.js"></script>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

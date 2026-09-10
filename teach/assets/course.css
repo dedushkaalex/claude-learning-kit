@@ -115,3 +115,30 @@ footer.lesson-footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px soli
   .panel, .quiz { break-inside: avoid; }
   a::after { content: " (" attr(href) ")"; font-size: 0.8em; color: var(--muted); }
 }
+
+nav.toc { display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem; margin: 0 0 1.5rem; font-size: 0.9rem; }
+nav.toc a { text-decoration: none; border-bottom: 1px solid var(--line); }
+
+dl.glossary { margin: 1rem 0; }
+dl.glossary dt { font-weight: 600; margin-top: 1.1rem; }
+dl.glossary dd { margin: 0.25rem 0 0; max-width: 38rem; }
+dl.glossary .where, dl.glossary .contrast { display: block; font-size: 0.9rem; color: var(--muted); margin-top: 0.25rem; }
+dl.glossary .contrast::before { content: "Не путать: "; color: var(--danger); font-weight: 500; }
+dl.glossary .where::before { content: "Где смотреть: "; color: var(--accent); font-weight: 500; }
+
+.recall { margin: 1rem 0; }
+.recall .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 0.9rem 1.1rem; margin: 0 0 0.8rem; }
+.recall .card .q { font-weight: 500; margin: 0 0 0.5rem; }
+.recall .card .a { display: none; border-top: 1px dashed var(--line); padding-top: 0.6rem; margin-top: 0.6rem; font-size: 0.95rem; }
+.recall .card.open .a { display: block; }
+.recall .card .grade { display: none; margin-top: 0.6rem; }
+.recall .card.open .grade { display: block; }
+.recall .card.known { border-color: var(--accent); }
+.recall .card.unknown { border-color: var(--danger); }
+.recall .summary { font-size: 0.9rem; color: var(--muted); margin: 0.5rem 0 1rem; }
+.recall button { font: inherit; font-size: 0.85rem; padding: 0.3rem 0.7rem; margin: 0 0.4rem 0 0; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); cursor: pointer; }
+.recall button:hover { border-color: var(--accent); color: var(--accent); }
+.recall .phase { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+
+.predict { border-left: 3px solid var(--line); padding: 0.2rem 0 0.2rem 1rem; margin: 1rem 0; }
+.predict summary { cursor: pointer; color: var(--accent); font-size: 0.95rem; }

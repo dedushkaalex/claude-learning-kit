@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник — атомы и React: фазы 6, 7 и 9</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<main>
+  <h1>Атомы и React: фазы 6, 7 и 9 на одной странице</h1>
+  <p class="lede">Проверено на <code>effect/unstable/reactivity</code> из <code>effect@4.0.0-rc.112</code> и <code>@effect/atom-react</code> по коду проекта на 10.09.2026. Файлы: <code>src/entities/todo/todoStore.ts</code>, <code>src/features/todos/model/filter.ts</code>, hooks в <code>src/features/todos/hooks/</code>. Термины: <a href="glossary.html">глоссарий</a>.</p>
+
+  <h2>Какой атом выбрать</h2>
+  <table>
+    <tr><th>Нужно</th><th>Конструктор</th><th>В проекте</th></tr>
+    <tr><td>Значение из эффекта с сервисами</td><td><code>runtime.atom(effect)</code></td><td><code>todosAtom</code></td></tr>
+    <tr><td>Запустить эффект по событию</td><td><code>runtime.fn(fn, { reactivityKeys })</code></td><td><code>createTodoAtom</code>, <code>renameTodoAtom</code></td></tr>
+    <tr><td>Состояние UI без эффектов</td><td><code>Atom.make(initial)</code></td><td>—</td></tr>
+    <tr><td>Состояние UI, которое переживает перезагрузку</td><td><code>Atom.kvs({ runtime, key, schema, defaultValue })</code></td><td><code>filterAtom</code></td></tr>
+    <tr><td>Вычисление из других атомов</td><td><code>Atom.make((get) =&gt; ...)</code></td><td><code>visibleTodosAtom</code>, <code>activeCountAtom</code></td></tr>
+    <tr><td>Показать результат до ответа сервера</td><td><code>Atom.optimistic</code> + <code>Atom.optimisticFn</code></td><td><code>optimisticAtom</code>, <code>toggleTodoAtom</code>, <code>removeTodoAtom</code></td></tr>
+    <tr><td>Ресурс на время жизни компонента</td><td><code>runtime.atom</code> + <code>Effect.acquireRelease</code> + <code>useAtomMount</code></td><td>синхронизация вкладок, фаза 7</td></tr>
+  </table>
+
+  <h2>Точка сборки: один runtime на модуль</h2>
+<pre><code>export const runtime = Atom.runtime(
+  Layer.merge(
+    TodoClient.layer.pipe(Layer.provide(FetchHttpClient.layer), Layer.provide(browserConfig)),
+    KeyValueStore.layerStorage(() =&gt; localStorage),
+  ),
+)</code></pre>
+  <p><code>runtime</code> объявлен на уровне модуля. Внутри компонента он создавался бы на каждый рендер вместе со всеми сервисами и их состоянием.</p>
+
+  <h2>Источник, ключ, производные</h2>
+<pre><code>export const todosAtom = runtime
+  .atom(Effect.flatMap(TodoClient, (client) =&gt; client.todos()))
+  .pipe(Atom.withReactivity(["todos"]))                      // источник помечен ключом
+
+export const createTodoAtom = runtime.fn(
+  (title: string) =&gt; Effect.flatMap(TodoClient, (client) =&gt; client.create(title)),
+  { reactivityKeys: ["todos"] },                             // после успеха источник перечитывается
+)
+
+export const activeCountAtom = Atom.make((get) =&gt;           // зависимость через get, ключ не нужен
+  AsyncResult.map(get(optimisticAtom), (todos) =&gt; todos.filter((todo) =&gt; !todo.completed).length),
+)</code></pre>
+  <p>Что перезапускается после <code>create</code>: <code>todosAtom</code> по ключу, затем <code>optimisticAtom</code>, <code>visibleTodosAtom</code> и <code>activeCountAtom</code> по цепочке <code>get</code>. <code>filterAtom</code> не трогается.</p>
+
+  <h2><code>AsyncResult</code> и разметка</h2>
+  <table>
+    <tr><th>Состояние</th><th>Когда</th><th>Ветка builder</th></tr>
+    <tr><td><code>Initial</code></td><td>эффект ещё не давал результата</td><td><code>onInitial</code></td></tr>
+    <tr><td><code>Success</code>, <code>waiting: false</code></td><td>данные получены</td><td><code>onSuccess</code></td></tr>
+    <tr><td><code>Success</code>, <code>waiting: true</code></td><td>есть старые данные, идёт перезапрос</td><td><code>onSuccess</code>, флаг <code>result.waiting</code> для <code>disabled</code></td></tr>
+    <tr><td><code>Failure</code> с тегом</td><td>ожидаемая ошибка из <code>E</code></td><td><code>onErrorTag("EmptyTitle", ...)</code></td></tr>
+    <tr><td><code>Failure</code> с дефектом</td><td>сеть, таймаут, ошибка программы</td><td><code>onDefect</code></td></tr>
+  </table>
+  <p><code>render()</code> бросает исключение, если хотя бы одна достижимая ветка не описана. <code>orNull()</code> возвращает <code>null</code> вместо исключения. Если <code>E = never</code>, ветка <code>onFailure</code> недостижима, и описывать её не нужно.</p>
+
+  <h2>Hooks из <code>@effect/atom-react</code></h2>
+  <table>
+    <tr><th>Hook</th><th>Даёт</th><th>Перерисовка при изменении</th><th>В проекте</th></tr>
+    <tr><td><code>useAtomValue(atom)</code></td><td>значение</td><td>да</td><td><code>useTodoList</code>: список</td></tr>
+    <tr><td><code>useAtomSet(atom)</code></td><td>функцию записи</td><td>нет</td><td><code>useTodoList</code>: <code>toggle</code>, <code>remove</code></td></tr>
+    <tr><td><code>useAtom(atom)</code></td><td>пару значение + запись</td><td>да</td><td><code>useTodoFilter</code>, <code>useClearCompleted</code></td></tr>
+    <tr><td><code>useAtomMount(atom)</code></td><td>подписку без значения</td><td>нет</td><td>атом синхронизации вкладок</td></tr>
+  </table>
+<pre><code>const [result, create] = useAtom(createTodoAtom, { mode: "promise" })
+create(title)
+  .then(() =&gt; form.reset())      // успех: значение из A
+  .catch(() =&gt; {})               // отказ: сама ошибка; без catch будет unhandled rejection</code></pre>
+  <p>Когда нужен <code>mode: "promise"</code>: обработчик события должен дождаться исхода и изменить локальное состояние React (сброс формы, закрытие поля редактирования). Когда не нужен: исход виден из <code>AsyncResult</code> самого атома, как у <code>toggle</code> и <code>remove</code>.</p>
+
+  <h2>Оптимистичное обновление</h2>
+<pre><code>export const optimisticAtom = Atom.optimistic(todosAtom)          // записываемая копия источника
+
+export const toggleTodoAtom = Atom.optimisticFn(optimisticAtom, {
+  reducer: (current, { id, completed }: ToggleInput) =&gt;            // предварительное значение копии
+    AsyncResult.map(current, (todos) =&gt;
+      todos.map((todo) =&gt; (todo.id === id ? { ...todo, completed } : todo)),
+    ),
+  fn: runtime.fn(({ id, completed }: ToggleInput) =&gt;               // без reactivityKeys
+    Effect.flatMap(TodoClient, (client) =&gt; client.toggle(id, completed)),
+  ),
+})</code></pre>
+  <ol>
+    <li>Запись в <code>toggleTodoAtom</code> кладёт результат <code>reducer</code> в копию с <code>waiting: true</code>.</li>
+    <li>Выполняется <code>fn</code>.</li>
+    <li>Успех: источник <code>todosAtom</code> перечитывается, копия принимает его значение.</li>
+    <li>Ошибка: копия откатывается к последнему значению источника.</li>
+  </ol>
+  <table>
+    <tr><th>Ошибка</th><th>Симптом</th><th>Исправление</th></tr>
+    <tr><td>Производный атом читает <code>todosAtom</code></td><td>UI не видит предварительное значение</td><td>читать <code>optimisticAtom</code> в точке вычисления</td></tr>
+    <tr><td><code>reactivityKeys: ["todos"]</code> во внутреннем <code>runtime.fn</code></td><td>два <code>GET /todos</code> подряд</td><td>убрать ключ, источник обновит <code>optimisticFn</code></td></tr>
+    <tr><td><code>fn: (set) =&gt; runtime.fn(...)</code></td><td>новый атом на каждый вызов</td><td><code>fn</code> — сам атом, объявленный один раз</td></tr>
+    <tr><td>Параметр reducer без аннотации типа</td><td>тип входа выводится как <code>void</code></td><td>аннотировать: <code>(current, input: ToggleInput)</code></td></tr>
+    <tr><td>Операция не идемпотентна</td><td>повтор запроса меняет состояние ещё раз</td><td>передавать целевое значение, как <code>completed</code> у <code>toggle</code></td></tr>
+  </table>
+
+  <h2>Локальное состояние рядом с атомами</h2>
+  <table>
+    <tr><th>Состояние</th><th>Где живёт</th><th>Почему</th></tr>
+    <tr><td>Список todo, результат запроса</td><td>атом</td><td>нужен нескольким компонентам, зависит от сервисов</td></tr>
+    <tr><td>Фильтр</td><td><code>Atom.kvs</code></td><td>нужен списку и счётчику, должен пережить перезагрузку</td></tr>
+    <tr><td><code>editing</code> карточки</td><td><code>useState</code> внутри <code>TodoCard</code></td><td>касается одной карточки, глобальный атом утёк бы во все карточки</td></tr>
+    <tr><td><code>disabled</code> кнопки во время запроса</td><td><code>result.waiting</code></td><td>уже есть в <code>AsyncResult</code>, второй источник не нужен</td></tr>
+  </table>
+  <p>Компонент с <code>useState</code> нельзя объявить внутри <code>map</code> списка как кусок JSX. Он выносится в отдельный компонент (<code>TodoCard</code>).</p>
+
+  <h2>Ресурс на время монтирования</h2>
+<pre><code>export const todosSyncAtom = runtime.atom(
+  Effect.acquireRelease(
+    Effect.sync(() =&gt; { window.addEventListener("storage", onStorage); return onStorage }),
+    (handler) =&gt; Effect.sync(() =&gt; window.removeEventListener("storage", handler)),   // release возвращает эффект
+  ),
+)
+// в компоненте: useAtomMount(todosSyncAtom)</code></pre>
+  <p>Освобождение выполняется, когда атом теряет последнего подписчика, на одну задачу позже и только если никто не подписался снова. Таймлайн: <a href="atom-lifetime.html">жизненный цикл атома</a>.</p>
+
+  <h2>Параллельные запросы из одного действия</h2>
+<pre><code>export const clearCompletedAtom = runtime.fn&lt;void&gt;()(
+  () =&gt; Effect.gen(function* () {
+    const client = yield* TodoClient
+    const todos = yield* client.todos()
+    const completed = todos.filter((todo) =&gt; todo.completed)
+    yield* Effect.forEach(completed, (todo) =&gt; client.remove(todo.id), { concurrency: 3, discard: true })
+  }),
+  { reactivityKeys: ["todos"] },        // обычный runtime.fn: ключ нужен, никто другой источник не обновит
+)</code></pre>
+  <p>Первая ошибка прерывает остальные запросы в полёте, и весь эффект завершается этой ошибкой. Часть удалений при этом уже выполнена на сервере. Альтернатива без частичного отказа: один эндпоинт <code>DELETE /todos?completed=true</code>.</p>
+
+  <h2>Первоисточник</h2>
+  <p>Установленные типы: <a href="../../node_modules/effect/dist/unstable/reactivity/Atom.d.ts">Atom.d.ts</a> (<code>runtime</code>, <code>fn</code>, <code>optimistic</code>, <code>optimisticFn</code>, <code>kvs</code>, <code>withReactivity</code>), <a href="../../node_modules/@effect/atom-react/dist/index.d.ts">@effect/atom-react index.d.ts</a> (hooks и опция <code>mode</code>). README библиотеки: <a href="https://github.com/tim-smart/effect-atom/blob/main/README.md">effect-atom</a>.</p>
+
+  <footer class="lesson-footer">
+    <p>Справочники: <a href="glossary.html">глоссарий</a>, <a href="effect-core.html">ядро Effect</a>, <a href="atom-lifetime.html">жизненный цикл атома</a>, <a href="httpapi-server.html">HttpApi-сервер</a>. Урок: <a href="../lessons/0003-review-phases-1-9.html">3. Повторение фаз 1–9</a>.</p>
+  </footer>
+</main>
+</body>
+</html>

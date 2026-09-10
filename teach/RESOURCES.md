@@ -41,6 +41,13 @@
 - [Installed types: `HttpApiEndpoint.d.ts`, `HttpApiBuilder.d.ts`, `HttpApiTest.d.ts` (rc.112)](../node_modules/effect/dist/unstable/httpapi/)
   Exact overloads of `get/post/patch/delete`, `payload` constraint (schema for body methods), `HttpApiTest.groups`. Use for: any "which option is allowed here" question.
 
+- [Installed types: `Effect.d.ts`, `Layer.d.ts`, `Schema.d.ts` (rc.112)](../node_modules/effect/dist/)
+  Signatures of `Effect.fn`, `catchTag`, `mapError`, `Layer.provide`/`provideMerge`/`fresh`, `Schema.decode*`, `Schema.brand`. Use for: any "which channel does this touch" question in the review pack.
+- [Installed types: `Atom.d.ts` (`effect/unstable/reactivity`), `@effect/atom-react` `index.d.ts`](../node_modules/effect/dist/unstable/reactivity/Atom.d.ts)
+  `runtime.atom`/`runtime.fn`, `optimistic`/`optimisticFn`, `kvs`, `withReactivity`; hook overloads with `mode: "promise"`. Use for: exact option names in the atoms cheat sheet.
+- [Installed types: `KeyValueStore.d.ts`, `HttpClient.d.ts` (rc.112)](../node_modules/effect/dist/unstable/)
+  `toSchemaStore` error type, `HttpClient.retry` options (`while`, `times`, `schedule`). Use for: the persistence and transport entries of the glossary.
+
 ## Wisdom (Communities)
 
 - [Effect Discord](https://discord.gg/effect-ts)
